@@ -35,7 +35,7 @@ P2pNodeConfig::P2pNodeConfig() :
   handshakeTimeout(std::chrono::milliseconds(P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT)),
   connectInterval(P2P_DEFAULT_CONNECT_INTERVAL),
   connectTimeout(std::chrono::milliseconds(P2P_DEFAULT_CONNECTION_TIMEOUT)),
-  networkId(IRIDIUM_NETWORK),
+  networkId(BYTECOIN_NETWORK),
   expectedOutgoingConnectionsCount(P2P_DEFAULT_CONNECTIONS_COUNT),
   whiteListConnectionsPercent(P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT),
   peerListConnectRange(P2P_DEFAULT_CONNECT_RANGE),
