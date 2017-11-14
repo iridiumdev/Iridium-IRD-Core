@@ -27,14 +27,17 @@ namespace parameters {
 const uint32_t CRYPTONOTE_MAX_BLOCK_NUMBER                   = 500000000;
 const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
-const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0x16fa; // addresses start with "2"
-const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 20;
+const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0x16fa;
+const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW         = 20;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
 
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 
 // MONEY_SUPPLY - total number coins to be generated
 const uint64_t MONEY_SUPPLY                                  = UINT64_C(2500000000000000);
+const uint32_t ZAWY_DIFFICULTY_BLOCK_INDEX                 = 0;
+const size_t ZAWY_DIFFICULTY_V2                          = 0;
+const uint8_t ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION   = 0;
 const unsigned EMISSION_SPEED_FACTOR                         = 18;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
@@ -51,8 +54,14 @@ const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(5000);
 const uint64_t DIFFICULTY_TARGET                             = 175; // seconds
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
 const size_t   DIFFICULTY_WINDOW                             = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY; // blocks
+const size_t   DIFFICULTY_WINDOW_V1                          = DIFFICULTY_WINDOW;
+const size_t   DIFFICULTY_WINDOW_V2                          = DIFFICULTY_WINDOW;
 const size_t   DIFFICULTY_CUT                                = 60;  // timestamps to cut after sorting
+const size_t   DIFFICULTY_CUT_V1                             = DIFFICULTY_CUT;
+const size_t   DIFFICULTY_CUT_V2                             = DIFFICULTY_CUT;
 const size_t   DIFFICULTY_LAG                                = 15;  // set to 15 to match iridium_v2
+const size_t   DIFFICULTY_LAG_V1                             = DIFFICULTY_LAG;
+const size_t   DIFFICULTY_LAG_V2                             = DIFFICULTY_LAG;
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
 const size_t   MAX_BLOCK_SIZE_INITIAL                        =  20 * 1024;
@@ -70,10 +79,10 @@ const size_t   FUSION_TX_MAX_SIZE                            = CRYPTONOTE_BLOCK_
 const size_t   FUSION_TX_MIN_INPUT_COUNT                     = 12;
 const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
 
-const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 8560;
+const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 0;
 const uint32_t IRIDIUM_REWARD_ADJUSTMENT_BLOCK               = 8560;
-const uint32_t UPGRADE_HEIGHT_V2                             = 99999999;
-const uint32_t UPGRADE_HEIGHT_V3                             = 99999999;
+const uint32_t UPGRADE_HEIGHT_V2                                = 35000;
+const uint32_t UPGRADE_HEIGHT_V3                                = 99999999;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -118,39 +127,24 @@ const uint32_t P2P_DEFAULT_CONNECTION_TIMEOUT                = 5000;          //
 const uint32_t P2P_DEFAULT_PING_CONNECTION_TIMEOUT           = 2000;          // 2 seconds
 const uint64_t P2P_DEFAULT_INVOKE_TIMEOUT                    = 60 * 2 * 1000; // 2 minutes
 const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          // 5 seconds
-const char     P2P_STAT_TRUSTED_PUB_KEY[] = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
+const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
 
 const char* const SEED_NODES[] = {
-  "108.61.196.136:12007",
-  "45.32.71.24:12007",
-  "45.63.119.236:12007",
-  "13.92.140.240:12007",
-  "52.14.88.78:12007",
-  "66.42.209.128:12007",
-  "74.218.51.222:12007"
-};
+    "96.10.113.218:12007",
+    "108.61.196.136:12007"
+    };
+
 
 struct CheckpointData {
   uint32_t index;
   const char* blockId;
 };
 
-const CheckpointData CHECKPOINTS[] = {
-  {1100,"afdbee5a9f28a4c0a78d6a18dbac793e51e2776fece60848954b8e1ec160cda1"},
-  {2200,"5e7e150df20e63be205f06c6a6f729f7b46c747229acf2e667485b0d2639c649"},
-  {3300,"791928b5c3c89cee8ada3b289b5ae1fd85a1a023b10b2c932278860f60e10ad4"},
-  {4400,"c2f768a5ddc200a26498069785d0b7044f7fb7a899ed9c60c99e3808eea7ff18"},
-  {5500,"bf0b357c23d4924a29b9336ea68302e3c058d44ff25153e5e717198874201df3"},
-  {6600,"19be10beebd3b587acbd2b4604d7bfe775e1b7641dde36f67f0f8cb156f9ff38"},
-  {7700,"def4a690c95f49ffb963504773d575b3979adc77a314f24966f0aa95e03aec3c"},
-  {8800,"2bd79ba2a0fc988f902e0353ce41adaebe7e707082945eb87dd5841c9ca47ed1"},
-  {9900,"8eea03ce377015ba5c069c56581c237b4a600b525b60137b8f13b748cd7116e8"},
-  {10100,"81e9f16a8e36266fc1bd5f786fb2a9612f710c9c2d964978025d34eb9fe25899"},
-  {11000,"f674ec1545ec21172f7299bd79c7f80f70e02df12b896b5d18307d1cdee67f80"},
-  {22000,"05f59eebe82c297beffa73abebca68d2bedeb40a13381d498e2355e9a1625127"},
-  {33000,"0569528c3c146ed11bf6029818b90706314ffcd35ae4ecac9dbfb053a21910e7"},
+const std::initializer_list<CheckpointData> CHECKPOINTS = {  };
 
-};
 } // CryptoNote
 
 #define ALLOW_DEBUG_COMMANDS
+
+
+

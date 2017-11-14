@@ -194,7 +194,9 @@ std::vector<CryptoNote::TransactionsInBlockInfo> filterTransactions(
       }
     }
 
-    result.push_back(std::move(item));
+    if (!block.transactions.empty()) {
+      result.push_back(std::move(item));
+    }
   }
 
   return result;

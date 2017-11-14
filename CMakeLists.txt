@@ -1,11 +1,5 @@
 cmake_minimum_required(VERSION 2.8.6)
 
-include( MunkeiVersionFromGit.cmake )
-version_from_git(LOG ON)
-
-# set(VERSION "0.1")
-# $Format:Packaged from commit %H%nset(COMMIT %h)%nset(REFS "%d")$
-
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo Release CACHE TYPE INTERNAL)
 set(CMAKE_SKIP_INSTALL_RULES ON)
@@ -16,8 +10,6 @@ enable_testing()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake ${CMAKE_CURRENT_BINARY_DIR})
 
 project(Iridium)
-
-
 
 include_directories(include src external "${CMAKE_CURRENT_BINARY_DIR}/version")
 if(APPLE)
@@ -154,4 +146,4 @@ endif()
 
 add_subdirectory(external)
 add_subdirectory(src)
-add_subdirectory(tests)
+#add_subdirectory(tests)
