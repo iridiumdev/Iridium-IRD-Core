@@ -278,6 +278,11 @@ bool Core::hasBlock(const Crypto::Hash& blockHash) const {
   return findSegmentContainingBlock(blockHash) != nullptr;
 }
 
+bool Core::hasBlockInMainChain(const Crypto::Hash& blockHash) const {
+  throwIfNotInitialized();
+  return findMainChainSegmentContainingBlock(blockHash) != nullptr;
+}
+
 BlockTemplate Core::getBlockByIndex(uint32_t index) const {
   assert(!chainsStorage.empty());
   assert(!chainsLeaves.empty());
@@ -295,10 +300,24 @@ BlockTemplate Core::getBlockByHash(const Crypto::Hash& blockHash) const {
   assert(!chainsLeaves.empty());
 
   throwIfNotInitialized();
-  IBlockchainCache* segment =
-      findMainChainSegmentContainingBlock(blockHash); // TODO should it be requested from the main chain?
+  IBlockchainCache* segment = findMainChainSegmentContainingBlock(blockHash);
   if (segment == nullptr) {
     throw std::runtime_error("Requested hash wasn't found in main blockchain");
+  }
+
+  uint32_t blockIndex = segment->getBlockIndex(blockHash);
+
+  return restoreBlockTemplate(segment, blockIndex);
+}
+
+BlockTemplate Core::getAlternativeBlockByHash(const Crypto::Hash& blockHash) const {
+  assert(!chainsStorage.empty());
+  assert(!chainsLeaves.empty());
+
+  throwIfNotInitialized();
+  IBlockchainCache* segment = findAlternativeSegmentContainingBlock(blockHash);
+  if (segment == nullptr) {
+    throw std::runtime_error("Requested hash wasn't found in alternative segment");
   }
 
   uint32_t blockIndex = segment->getBlockIndex(blockHash);

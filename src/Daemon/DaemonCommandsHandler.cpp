@@ -194,7 +194,10 @@ bool DaemonCommandsHandler::print_block_by_hash(const std::string& arg) {
   }
 
   if (m_core.hasBlock(block_hash)) {
-    print_as_json(m_core.getBlockByHash(block_hash));
+    if(m_core.hasBlockInMainChain(block_hash))
+      print_as_json(m_core.getBlockByHash(block_hash));
+    else
+      print_as_json(m_core.getAlternativeBlockByHash(block_hash));
   } else {
     std::cout << "block wasn't found: " << arg << std::endl;
     return false;

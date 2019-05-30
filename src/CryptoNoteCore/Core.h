@@ -47,8 +47,10 @@ public:
   virtual uint64_t getBlockTimestampByIndex(uint32_t blockIndex) const override;
 
   virtual bool hasBlock(const Crypto::Hash& blockHash) const override;
+  virtual bool hasBlockInMainChain(const Crypto::Hash& blockHash) const;
   virtual BlockTemplate getBlockByIndex(uint32_t index) const override;
   virtual BlockTemplate getBlockByHash(const Crypto::Hash& blockHash) const override;
+  virtual BlockTemplate getAlternativeBlockByHash(const Crypto::Hash& blockHash) const;
   virtual Crypto::Hash  getBlockTemplateHash(const BlockTemplate block) const;
 
   virtual std::vector<Crypto::Hash> buildSparseChain() const override;
