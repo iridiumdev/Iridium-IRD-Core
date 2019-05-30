@@ -176,7 +176,7 @@ bool DaemonCommandsHandler::set_log(const std::vector<std::string>& args)
 bool DaemonCommandsHandler::print_block_by_height(uint32_t height)
 {
   if (height > m_core.getTopBlockIndex()) {
-    std::cout << "block wasn't found. Current block chain height: " << m_core.getTopBlockIndex() + 1 << ", requested: " << height << std::endl;
+    std::cout << "block wasn't found. Current block chain top block height: " << m_core.getTopBlockIndex() << ", requested: " << height << std::endl;
     return false;
   }
 
