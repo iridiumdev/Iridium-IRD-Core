@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
 // Copyright (c) 2014-2018, The Aeon Project
+// Copyright (c) 2018, The TurtleCoin Developers
 // Copyright (c) 2017-2019, The Iridium developers
 // You should have received a copy of the GNU Lesser General Public License
 // If not, see <http://www.gnu.org/licenses/>.
@@ -12,8 +13,22 @@
 #include <CryptoTypes.h>
 #include "generic-ops.h"
 
-namespace Crypto {
+// Standard Cryptonight Definitions
+    #define CN_PAGE_SIZE                    2097152
+    #define CN_SCRATCHPAD                   2097152
+    #define CN_ITERATIONS                   1048576
 
+// Standard Cryptonight Lite Definitions
+    #define CN_LITE_PAGE_SIZE               2097152
+    #define CN_LITE_SCRATCHPAD              1048576
+    #define CN_LITE_ITERATIONS              524288
+
+// Standard Cryptonight lite Pico/Trtl
+    #define CN_PICO_PAGE_SIZE             262144
+    #define CN_PICO_SCRATCHPAD            262144
+    #define CN_PICO_ITERATIONS            131072
+
+namespace Crypto {
   extern "C" {
 #include "hash-ops.h"
   }
@@ -32,28 +47,43 @@ namespace Crypto {
     return h;
   }
 
+  // Standard Cryptonight Definitions
   inline void cn_slow_hash_v0(const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 0, 0);
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 0, 0, CN_PAGE_SIZE, CN_SCRATCHPAD, CN_ITERATIONS);
   }
 
   inline void cn_slow_hash_v1(const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 1, 0);
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 1, 0, CN_PAGE_SIZE, CN_SCRATCHPAD, CN_ITERATIONS);
   }
 
   inline void cn_slow_hash_v2(const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 2, 0);
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 2, 0,  CN_PAGE_SIZE, CN_SCRATCHPAD, CN_ITERATIONS);
   }
 
+  // Standard Cryptonight Lite Definitions
   inline void cn_lite_slow_hash_v0(const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 0, 0);
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 0, 0, CN_LITE_PAGE_SIZE, CN_LITE_SCRATCHPAD, CN_LITE_ITERATIONS);
   }
 
   inline void cn_lite_slow_hash_v1(const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 1, 0);
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 1, 0, CN_LITE_PAGE_SIZE, CN_LITE_SCRATCHPAD, CN_LITE_ITERATIONS);
   }
 
   inline void cn_lite_slow_hash_v2(const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 2, 0);
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 2, 0, CN_LITE_PAGE_SIZE, CN_LITE_SCRATCHPAD, CN_LITE_ITERATIONS);
+  }
+
+  // Standard Cryptonight lite Pico/Trtl
+  inline void cn_pico_slow_hash_v0(const void *data, size_t length, Hash &hash) {
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 0, 0, CN_PICO_PAGE_SIZE, CN_PICO_SCRATCHPAD, CN_PICO_ITERATIONS);
+  }
+
+  inline void cn_pico_slow_hash_v1(const void *data, size_t length, Hash &hash) {
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 1, 0, CN_PICO_PAGE_SIZE, CN_PICO_SCRATCHPAD, CN_PICO_ITERATIONS);
+  }
+
+  inline void cn_pico_slow_hash_v2(const void *data, size_t length, Hash &hash) {
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 2, 0, CN_PICO_PAGE_SIZE, CN_PICO_SCRATCHPAD, CN_PICO_ITERATIONS);
   }
 
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
