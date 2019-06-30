@@ -21,6 +21,10 @@ set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include git commit # in Version")
 set(BUILD_TESTS OFF CACHE BOOL "build tests")
 set(PORTABLE ON)
 
+# Tags the version for tests and betas, comment for release
+# set(PROJECT_VERSION_TWEAK "cn_pico")
+
+
 #----------------#
 # Cooking stuffs #
 #----------------#

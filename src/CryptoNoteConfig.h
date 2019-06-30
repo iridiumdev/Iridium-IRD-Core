@@ -98,7 +98,7 @@ const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json"
 const uint32_t TESTNET_UPGRADE_HEIGHT_V2                             = 2;
 const uint32_t TESTNET_UPGRADE_HEIGHT_V3                             = 5;
 const uint32_t TESTNET_UPGRADE_HEIGHT_V4                             = 10;
-const uint32_t TESTNET_UPGRADE_HEIGHT_V5                             = 20;
+const uint32_t TESTNET_UPGRADE_HEIGHT_V5                             = 100;
 const uint64_t TESTNET_DIFFICULTY_TARGET                             = 60; // target in testnet mode
 const uint64_t TESTNET_DIFFICULTY_GUESS                              = 200;
 
@@ -138,6 +138,12 @@ const uint32_t P2P_DEFAULT_PING_CONNECTION_TIMEOUT           = 2000;          //
 const uint64_t P2P_DEFAULT_INVOKE_TIMEOUT                    = 60 * 2 * 1000; // 2 minutes
 const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          // 5 seconds
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
+
+// Defaults DB configuration
+const uint64_t DB_WRITE_BUFFER_MB_DEFAULT_SIZE               = 1024;          // 1 GB
+const uint64_t DB_READ_BUFFER_MB_DEFAULT_SIZE                = 1024;          // 1 GB
+const uint32_t DB_DEFAULT_MAX_OPEN_FILES                     = 500;           // 500 files
+const uint16_t DB_DEFAULT_BACKGROUND_THREADS_COUNT           = 10;            // 10 threads
 
 const char* const SEED_NODES[] = {
     "144.208.96.2:12001", /*EXP*/
