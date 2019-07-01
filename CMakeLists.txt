@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(iridium VERSION 4.2.0)
+project(iridium VERSION 5.0.0)
 
 #----------------#
 # Global options #
@@ -22,7 +22,7 @@ set(BUILD_TESTS OFF CACHE BOOL "build tests")
 set(PORTABLE ON)
 
 # Tags the version for tests and betas, comment for release
-set(PROJECT_VERSION_TWEAK "cn_pico")
+# set(PROJECT_VERSION_TWEAK "heavytest")
 
 
 #----------------#
