@@ -460,14 +460,7 @@ Currency::nextDifficultyV5(std::vector<uint64_t> &timestamps,
                            const uint64_t &T, const uint64_t &N,
                            const uint64_t &height, const uint64_t &FORK_HEIGHT,
                            const uint64_t &difficulty_guess) const {
-
-  //    logger(INFO,BLUE) << "Height: " << height << " TsSize: " <<
-  //    timestamps.size() << " CumulDsize: " << cumulative_difficulties.size();
-  //    logger(INFO,BLUE) << "Window: " << N << " Target: " << T << " Upgrade: "
-  //    << FORK_HEIGHT << " Guess: " << difficulty_guess;
-
-  assert(timestamps.size() == cumulative_difficulties.size() &&
-         timestamps.size() == N);
+  assert(timestamps.size() == cumulative_difficulties.size() && timestamps.size() == N);
 
   // Hard code D if there are not at least N+1 BLOCKS after fork (or genesis)
   if (height >= FORK_HEIGHT && height < (FORK_HEIGHT + N - 1)) {
@@ -485,10 +478,6 @@ Currency::nextDifficultyV5(std::vector<uint64_t> &timestamps,
     } else {
       this_timestamp = previous_timestamp + 1;
     }
-
-//    logger(INFO, CYAN) << "st[" << i
-//                       << "]: " << this_timestamp - previous_timestamp;
-
     L += i * std::min(6 * T, this_timestamp - previous_timestamp);
     previous_timestamp = this_timestamp;
   }
@@ -497,29 +486,7 @@ Currency::nextDifficultyV5(std::vector<uint64_t> &timestamps,
     L = 180 * T;
   }
 
-//  logger(INFO, GREEN)
-//      << "avgHR(11): "
-//      << static_cast<double>(
-//             (static_cast<double>(cumulative_difficulties.back()) -
-//              static_cast<double>(cumulative_difficulties[N - 12])) /
-//             T / 11)
-//      << " AvgHR(60): "
-//      << static_cast<double>(
-//             (static_cast<double>(cumulative_difficulties.back()) -
-//              static_cast<double>(cumulative_difficulties.front())) /
-//             T / 60);
-//  logger(INFO, BRIGHT_MAGENTA)
-//      << "avgST(11): "
-//      << static_cast<double>((static_cast<double>(timestamps.back()) -
-//                              static_cast<double>(timestamps[N - 12])) /
-//                             11)
-//      << " AvgST(60): "
-//      << static_cast<double>((static_cast<double>(timestamps.back()) -
-//                              static_cast<double>(timestamps.front())) /
-//                             60);
-
-  avg_D =
-      (cumulative_difficulties.back() - cumulative_difficulties.front()) / N;
+  avg_D = (cumulative_difficulties.back() - cumulative_difficulties.front()) / N;
 
   // Prevent round off error for small D and overflow for large D.
   if (avg_D > 7200000000 * T) { // 2000000*N*N = 7200000000 // (2000000*N*N*T)
@@ -539,20 +506,6 @@ Currency::nextDifficultyV5(std::vector<uint64_t> &timestamps,
     } else {
       i /= 10;
     }
-  }
-
-  // Make least 2 digits = size of hash rate change last 11 BLOCKS if it's
-  // statistically significant. D=2540035 => hash rate 3.5x higher than D
-  // expected. Blocks coming 3.5x too fast.
-  if (next_D > 10000) { // should be 10000
-    uint64_t est_HR =
-        (10 * (11 * T + (timestamps[N] - timestamps[N - 11]) / 2)) /
-        (timestamps[N] - timestamps[N - 11] + 1);
-    if (est_HR > 5 && est_HR < 25) {
-      est_HR = 0;
-    }
-    est_HR = std::min(static_cast<uint64_t>(99), est_HR);
-    next_D = ((next_D + 50) / 100) * 100 + est_HR;
   }
 
   return next_D;

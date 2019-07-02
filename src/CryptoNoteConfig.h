@@ -47,7 +47,7 @@ const uint64_t MINIMUM_FEE                                   = UINT64_C(5000);
 const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(5000);
 
 const uint64_t DIFFICULTY_TARGET                             = 175;
-const uint64_t DIFFICULTY_GUESS_V5                           = 17000000; // 100kH/S
+const uint64_t DIFFICULTY_GUESS_V5                           = 8750000; // 50kH/S
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
 const size_t   DIFFICULTY_WINDOW                             = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;
 const size_t   DIFFICULTY_WINDOW_V2                          = 60;
@@ -59,7 +59,7 @@ const size_t   DIFFICULTY_LAG_V2                             = 0;
 
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
-const size_t   MAX_BLOCK_SIZE_INITIAL                        =  20 * 1024;
+const size_t   MAX_BLOCK_SIZE_INITIAL                        = 20 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       = 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
 const uint64_t MAX_TX_EXTRA_SIZE                             = 150000;
@@ -81,7 +81,7 @@ const uint32_t IRIDIUM_REWARD_ADJUSTMENT_BLOCK               = 8560;
 const uint32_t UPGRADE_HEIGHT_V2                             = 69500;
 const uint32_t UPGRADE_HEIGHT_V3                             = 95250;
 const uint32_t UPGRADE_HEIGHT_V4                             = 115200;
-const uint32_t UPGRADE_HEIGHT_V5                             = 500000001;
+const uint32_t UPGRADE_HEIGHT_V5                             = 332500;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -98,7 +98,7 @@ const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json"
 const uint32_t TESTNET_UPGRADE_HEIGHT_V2                             = 2;
 const uint32_t TESTNET_UPGRADE_HEIGHT_V3                             = 5;
 const uint32_t TESTNET_UPGRADE_HEIGHT_V4                             = 10;
-const uint32_t TESTNET_UPGRADE_HEIGHT_V5                             = 20;
+const uint32_t TESTNET_UPGRADE_HEIGHT_V5                             = 100;
 const uint64_t TESTNET_DIFFICULTY_TARGET                             = 60; // target in testnet mode
 const uint64_t TESTNET_DIFFICULTY_GUESS                              = 200;
 
@@ -139,6 +139,12 @@ const uint64_t P2P_DEFAULT_INVOKE_TIMEOUT                    = 60 * 2 * 1000; //
 const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          // 5 seconds
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
 
+// Defaults DB configuration
+const uint64_t DB_WRITE_BUFFER_MB_DEFAULT_SIZE               = 1024;          // 1 GB
+const uint64_t DB_READ_BUFFER_MB_DEFAULT_SIZE                = 1024;          // 1 GB
+const uint32_t DB_DEFAULT_MAX_OPEN_FILES                     = 500;           // 500 files
+const uint16_t DB_DEFAULT_BACKGROUND_THREADS_COUNT           = 10;            // 10 threads
+
 const char* const SEED_NODES[] = {
     "144.208.96.2:12001", /*EXP*/
     "5.178.66.70:12001", /*AMS*/
@@ -160,7 +166,7 @@ const std::initializer_list<CheckpointData> CHECKPOINTS = {
     {69500,"1e6f58fac635e3e0a0ca3845f6a07abaf4080c36dd91bfab315f6cdb657cc775"},
     {95250,"a5d8f703b1e4afa73b9f3050b9972c2b23730fcb5c916b521bc7d6ce2ad4c959"},
     {115200,"896c2d44deca8b1349e55f88ee8795d51bfc7b0feb4a59562fda61ae6e1f9fa5"},
-    {319000,"3e1b3f7decdf3ffc7d40ca67dc7cbab464247f54d83f0f3ea33216c29a65530d"}
+    {326170,"c7c10ab747450250b84806fdba71d4d3c8149b3773ff8510069034550809d034"}
 };
 
 } // CryptoNote

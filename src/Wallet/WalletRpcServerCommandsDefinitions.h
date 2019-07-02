@@ -54,7 +54,7 @@ using CryptoNote::ISerializer;
       std::list<transfer_destination> destinations;
       uint64_t fee;
       uint64_t mixin;
-      uint64_t unlock_time;
+      uint64_t unlock_time = 0;
       std::string payment_id;
 
       void serialize(ISerializer& s) {
