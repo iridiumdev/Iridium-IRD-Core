@@ -41,7 +41,7 @@ endif ()
 # Set compiler specific build flags
 if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_SYSTEM_NAME STREQUAL "AmigaOS")
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-  target_compile_options(miniupnpc-private INTERFACE -Wall)
+  target_compile_options(miniupnpc-private INTERFACE -Wall -Wno-stringop-truncation)
 endif ()
 
 # Suppress noise warnings
