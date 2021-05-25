@@ -47,11 +47,7 @@ find_package(Threads)
 # includes #
 #----------#
 include_directories(include src external "${CMAKE_CURRENT_BINARY_DIR}/version")
-include_directories(include
-    src
-    external
-    "${CMAKE_CURRENT_BINARY_DIR}/version"
-    )
+
 if(APPLE)
     include_directories(SYSTEM /usr/include/malloc)
     enable_language(ASM)
@@ -175,6 +171,8 @@ else()
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
     endif()
 endif()
+
+set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_IGNORE_SYSTEM_PATHS_DEFAULT OFF)
 option(BOOST_IGNORE_SYSTEM_PATHS "Ignore boost system paths for local boost installation" ${BOOST_IGNORE_SYSTEM_PATHS_DEFAULT})
 if (${BOOST_IGNORE_SYSTEM_PATHS} STREQUAL "ON")
