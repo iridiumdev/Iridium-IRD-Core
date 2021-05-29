@@ -4,6 +4,7 @@
 // If not, see <http://www.gnu.org/licenses/>.
 
 #include "TransactionValidatiorState.h"
+#include <algorithm>
 
 namespace CryptoNote {
 

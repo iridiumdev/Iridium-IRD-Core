@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdexcept>
 #include "Context.h"
 #include "ErrorMessage.h"
 

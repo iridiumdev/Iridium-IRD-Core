@@ -16,6 +16,7 @@
 #include <type_traits>
 #include <vector>
 #include <map>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 

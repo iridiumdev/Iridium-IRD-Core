@@ -10,6 +10,8 @@
 #include <functional>
 #include <queue>
 #include <stack>
+#include <exception>
+#include <stdexcept>
 
 namespace System {
 
