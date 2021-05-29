@@ -1,19 +1,26 @@
-# iridium cryptocurrency (IRD)
+# Iridium (IRD) cryptocurrency core
 
-![iridium logo](https://ird.cash/wp-content/uploads/2019/01/iridium.svg)
+[![GitHub Release Date](https://img.shields.io/github/release-date/iridiumdev/Iridium-IRD-Core?color=lightgrey&label=Latest%20release&logo=github&style=plastic)](https://github.com/iridiumdev/Iridium-IRD-Core/releases/latest)
+[![GitHub last commit](https://img.shields.io/github/last-commit/iridiumdev/Iridium-IRD-Core?color=lightgrey&logo=github&style=plastic)](https://github.com/iridiumdev/Iridium-IRD-Core/commits)
+[![GitHub commits since tagged version](https://img.shields.io/github/commits-since/iridiumdev/Iridium-IRD-Core/v5.0.0?color=lightgrey&label=commits%20since%20latest%20release&logo=github&style=plastic)](https://github.com/iridiumdev/Iridium-IRD-Core/commits)
+
+<img src="https://www.ird.cash/wp-content/uploads/2019/01/iridium.svg" width="200" height="200">
 
 Iridium is a cryptonight based cryptocurrency (ticker : IRD)
 
 This is the iridium core source code and binary release.
 
-[Main website](http://ird.cash)
+[Main website](http://www.ird.cash)
 
-[BitcoinTalk main announcement thread](https://bitcointalk.org/index.php?topic=2150442.0;all)
+[BitcoinTalk main Iridium (IRD) announcement thread](https://bitcointalk.org/index.php?topic=2150442.0;all)
 
-[iridium-wallet gui (source and binaries)](https://github.com/iridiumdev/Iridium-wallet)
+[Iridium (IRD) Desktop Wallet (source and binaries)](https://github.com/iridiumdev/Iridium-IRD-wallet)
 
-[iridium graphicals elements](https://github.com/iridiumdev/iridium-graphics)
+[Iridium (IRD) Graphicals Assets](https://github.com/iridiumdev/Iridium-IRD-Graphical-Assets)
 
+[![Twitter Follow](https://img.shields.io/twitter/follow/iridiumcash?label=Twitter&color=lightgrey&logo=Twitter&style=plastic)](https://www.ird.cash)
+[![Discord](https://img.shields.io/discord/363789167274098688?label=Discord&color=lightgrey&logo=Discord&style=plastic)](https://discord.gg/xU85tpS)
+[![Subreddit subscribers](https://img.shields.io/reddit/subreddit-subscribers/IridiumCoin?color=lightgrey&label=Reddit&logo=Reddit&logoColor=orange&style=plastic)](https://www.reddit.com/r/IridiumCoin)
 
 Libraries needed : boost >=1.58
 
