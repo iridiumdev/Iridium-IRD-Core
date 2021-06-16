@@ -19,11 +19,9 @@ set(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY ON)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include git commit # in Version")
 set(BUILD_TESTS OFF CACHE BOOL "build tests")
-set(PORTABLE ON)
 
 # Tags the version for tests and betas, comment for release
 # set(PROJECT_VERSION_TWEAK "heavytest")
-
 
 #----------------#
 # Cooking stuffs #
@@ -35,7 +33,12 @@ set(ignoreMe "${QT_QMAKE_EXECUTABLE}")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "Choose the type of build." FORCE)
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
+endif()
+
+# Compile tests on Debug
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    set(BUILD_TESTS ON)
 endif()
 
 # Set version
@@ -196,7 +199,7 @@ endif()
 #---------#
 # Summary #
 #---------#
-message(STATUS " ")
+
 message(STATUS "========== building ${PROJECT_NAME} Core version : ${PROJECT_VERSION} build ${PROJECT_VERSION_TWEAK} ${CMAKE_BUILD_TYPE} =======")
 message(STATUS "Compiler : ${CMAKE_CXX_COMPILER_ID} version ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "Version : ${VERSION}")
@@ -204,10 +207,8 @@ message(STATUS "Revision : ${COMMIT_ID}")
 message(STATUS "Arch : ${ARCH}")
 message(STATUS "Boost version : ${Boost_LIB_VERSION}")
 message(STATUS "Link libraries statically : ${STATIC}" )
-message(STATUS "Portable : ${PORTABLE}" )
 message(STATUS "Build tests : " ${BUILD_TESTS})
 message(STATUS "----------------------------------------------------------")
-
 message(STATUS "C Flags ${CMAKE_C_FLAGS_RELEASE}")
 message(STATUS "CXX Flags ${CMAKE_CXX_FLAGS_RELEASE}")
 

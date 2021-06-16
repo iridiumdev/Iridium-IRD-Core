@@ -4,13 +4,6 @@ set(UPNPC_BUILD_SHARED OFF CACHE BOOL "Build shared library")
 set(UPNPC_BUILD_TESTS OFF CACHE BOOL "Build upnpc tests")
 add_subdirectory(miniupnpc)
 
-# gtests
-set(BUILD_GTESTS OFF CACHE BOOL "Build gtest")
-if (BUILD_GTESTS)
-   add_subdirectory(gtest)
-   set_property(TARGET gtest gtest_main PROPERTY FOLDER "external")
-endif()
-
 if(MSVC)
     include_directories(../version)
     add_subdirectory(rocksdb EXCLUDE_FROM_ALL)
@@ -22,7 +15,7 @@ elseif(NOT MSVC)
 endif()
 
 if(MSVC)
-  set_property(TARGET upnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -wd4244 -wd4267")
+    set_property(TARGET upnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -wd4244 -wd4267")
 elseif(NOT MSVC)
-  set_property(TARGET upnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -Wno-undef -Wno-unused-result -Wno-unused-value")
+    set_property(TARGET upnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -Wno-undef -Wno-unused-result -Wno-unused-value")
 endif()
