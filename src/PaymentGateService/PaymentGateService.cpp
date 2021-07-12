@@ -24,6 +24,7 @@
 #include "P2p/NetNode.h"
 #include <System/Context.h>
 #include "Wallet/WalletGreen.h"
+#include "CryptoNoteConfig.h"
 
 #ifdef ERROR
 #undef ERROR
@@ -36,6 +37,16 @@
 #endif
 
 using namespace PaymentService;
+
+namespace {
+const uint64_t MEGABYTE = 1024 * 1024;
+const uint64_t WRITE_BUFFER_MB_DEFAULT_SIZE = CryptoNote::DB_WRITE_BUFFER_MB_DEFAULT_SIZE * MEGABYTE;
+const uint64_t READ_BUFFER_MB_DEFAULT_SIZE = CryptoNote::DB_READ_BUFFER_MB_DEFAULT_SIZE * MEGABYTE;
+const uint32_t DEFAULT_MAX_OPEN_FILES = CryptoNote::DB_DEFAULT_MAX_OPEN_FILES;
+const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = CryptoNote::DB_DEFAULT_BACKGROUND_THREADS_COUNT;
+
+
+} //namespace
 
 void changeDirectory(const std::string& path) {
 #ifdef _WIN32
@@ -154,11 +165,12 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   //TODO: make command line options
   dbConfig.setConfigFolderDefaulted(true);
   dbConfig.setDataDir(config.dataDir);
-  dbConfig.setMaxOpenFiles(100);
-  dbConfig.setReadCacheSize(128*1024*1024);
-  dbConfig.setWriteBufferSize(128*1024*1024);
+  dbConfig.setMaxOpenFiles(DEFAULT_MAX_OPEN_FILES);
+
+  dbConfig.setReadCacheSize(READ_BUFFER_MB_DEFAULT_SIZE);
+  dbConfig.setWriteBufferSize(WRITE_BUFFER_MB_DEFAULT_SIZE);
   dbConfig.setTestnet(false);
-  dbConfig.setBackgroundThreadsCount(4);
+  dbConfig.setBackgroundThreadsCount(DEFAULT_BACKGROUND_THREADS_COUNT);
 
   if (dbConfig.isConfigFolderDefaulted()) {
     if (!Tools::create_directories_if_necessary(dbConfig.getDataDir())) {
