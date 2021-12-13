@@ -9,11 +9,13 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <stdint.h>
 
 #include "CryptoNoteConfig.h"
 #include "CryptoNoteCore/Difficulty.h"
 #include "CryptoNoteCore/Currency.h"
 #include "Logging/ConsoleLogger.h"
+
 
 using namespace std;
 
@@ -44,7 +46,16 @@ int main(int argc, char *argv[]) {
             end = n - currency.difficultyLag();
             begin = end - currency.difficultyWindow();
         }
-        uint64_t res = currency.nextDifficulty(
+
+//        Currency::nextDifficulty(uint8_t &version, uint32_t &blockIndex,
+//                                 std::vector<uint64_t> timestamps,
+//                                 std::vector<Difficulty> cumulativeDifficulties)
+
+        uint8_t version = 5;
+
+        uint32_t blockindex = 10;
+
+        auto res = currency.nextDifficulty(version, blockindex,
             vector<uint64_t>(timestamps.begin() + begin, timestamps.begin() + end),
             vector<uint64_t>(cumulative_difficulties.begin() + begin, cumulative_difficulties.begin() + end));
         if (res != difficulty) {

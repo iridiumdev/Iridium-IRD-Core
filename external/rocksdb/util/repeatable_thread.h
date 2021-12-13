@@ -10,10 +10,14 @@
 
 #include "port/port.h"
 #include "rocksdb/env.h"
+#include "test_util/mock_time_env.h"
 #include "util/mutexlock.h"
 
 namespace rocksdb {
 
+// Simple wrapper around port::Thread that supports calling a callback every
+// X seconds. If you pass in 0, then it will call your callback repeatedly
+// without delay.
 class RepeatableThread {
  public:
   RepeatableThread(std::function<void()> function,
@@ -24,6 +28,7 @@ class RepeatableThread {
         env_(env),
         delay_us_(delay_us),
         initial_delay_us_(initial_delay_us),
+        mutex_(env),
         cond_var_(&mutex_),
         running_(true),
 #ifndef NDEBUG
@@ -35,7 +40,7 @@ class RepeatableThread {
 
   void cancel() {
     {
-      MutexLock l(&mutex_);
+      InstrumentedMutexLock l(&mutex_);
       if (!running_) {
         return;
       }
@@ -44,6 +49,8 @@ class RepeatableThread {
     }
     thread_.join();
   }
+
+  bool IsRunning() { return running_; }
 
   ~RepeatableThread() { cancel(); }
 
@@ -55,7 +62,7 @@ class RepeatableThread {
   //
   // Note: only support one caller of this method.
   void TEST_WaitForRun(std::function<void()> callback = nullptr) {
-    MutexLock l(&mutex_);
+    InstrumentedMutexLock l(&mutex_);
     while (!waiting_) {
       cond_var_.Wait();
     }
@@ -72,7 +79,7 @@ class RepeatableThread {
 
  private:
   bool wait(uint64_t delay) {
-    MutexLock l(&mutex_);
+    InstrumentedMutexLock l(&mutex_);
     if (running_ && delay > 0) {
       uint64_t wait_until = env_->NowMicros() + delay;
 #ifndef NDEBUG
@@ -111,7 +118,7 @@ class RepeatableThread {
       function_();
 #ifndef NDEBUG
       {
-        MutexLock l(&mutex_);
+        InstrumentedMutexLock l(&mutex_);
         run_count_++;
         cond_var_.SignalAll();
       }
@@ -127,8 +134,8 @@ class RepeatableThread {
 
   // Mutex lock should be held when accessing running_, waiting_
   // and run_count_.
-  port::Mutex mutex_;
-  port::CondVar cond_var_;
+  InstrumentedMutex mutex_;
+  InstrumentedCondVar cond_var_;
   bool running_;
 #ifndef NDEBUG
   // RepeatableThread waiting for timeout.

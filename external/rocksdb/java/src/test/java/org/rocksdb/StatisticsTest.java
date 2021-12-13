@@ -17,8 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class StatisticsTest {
 
   @ClassRule
-  public static final RocksMemoryResource rocksMemoryResource =
-      new RocksMemoryResource();
+  public static final RocksNativeLibraryResource ROCKS_NATIVE_LIBRARY_RESOURCE =
+      new RocksNativeLibraryResource();
 
   @Rule
   public TemporaryFolder dbFolder = new TemporaryFolder();
@@ -96,6 +96,14 @@ public class StatisticsTest {
       final HistogramData histogramData = statistics.getHistogramData(HistogramType.BYTES_PER_READ);
       assertThat(histogramData).isNotNull();
       assertThat(histogramData.getAverage()).isGreaterThan(0);
+      assertThat(histogramData.getMedian()).isGreaterThan(0);
+      assertThat(histogramData.getPercentile95()).isGreaterThan(0);
+      assertThat(histogramData.getPercentile99()).isGreaterThan(0);
+      assertThat(histogramData.getStandardDeviation()).isEqualTo(0.00);
+      assertThat(histogramData.getMax()).isGreaterThan(0);
+      assertThat(histogramData.getCount()).isGreaterThan(0);
+      assertThat(histogramData.getSum()).isGreaterThan(0);
+      assertThat(histogramData.getMin()).isGreaterThan(0);
     }
   }
 

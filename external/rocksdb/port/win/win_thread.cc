@@ -40,7 +40,7 @@ struct WindowsThread::Data {
 void WindowsThread::Init(std::function<void()>&& func) {
 
   data_ = std::make_shared<Data>(std::move(func));
-  // We create another instance of shared_ptr to get an additional ref
+  // We create another instance of std::shared_ptr to get an additional ref
   // since we may detach and destroy this instance before the threadproc
   // may start to run. We choose to allocate this additional ref on the heap
   // so we do not need to synchronize and allow this thread to proceed
@@ -138,7 +138,12 @@ void WindowsThread::join() {
       "WaitForSingleObjectFailed: thread join");
   }
 
-  BOOL rc;
+  BOOL rc
+#if defined(_MSC_VER)
+    = FALSE;
+#else
+    __attribute__((__unused__));
+#endif
   rc = CloseHandle(reinterpret_cast<HANDLE>(data_->handle_));
   assert(rc != 0);
   data_->handle_ = 0;

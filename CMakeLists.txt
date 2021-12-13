@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.5)
-project(iridium VERSION 5.0.0)
+project(iridium VERSION 5.0.1)
 
 #----------------#
 # Global options #
 #----------------#
 message(STATUS "------- Starting configuration ---------")
-# Enabling C++11
-set(CMAKE_CXX_STANDARD 11)
+# Enabling C++14
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 # Default build type
 set(DEFAULT_BUILD_TYPE "Release")
 # default static build without tests
@@ -19,11 +21,9 @@ set(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY ON)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include git commit # in Version")
 set(BUILD_TESTS OFF CACHE BOOL "build tests")
-set(PORTABLE ON)
 
 # Tags the version for tests and betas, comment for release
 # set(PROJECT_VERSION_TWEAK "heavytest")
-
 
 #----------------#
 # Cooking stuffs #
@@ -35,7 +35,17 @@ set(ignoreMe "${QT_QMAKE_EXECUTABLE}")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "Choose the type of build." FORCE)
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
+endif()
+
+# Output directories
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# Compile tests on Debug
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    set(BUILD_TESTS ON)
 endif()
 
 # Set version
@@ -47,11 +57,7 @@ find_package(Threads)
 # includes #
 #----------#
 include_directories(include src external "${CMAKE_CURRENT_BINARY_DIR}/version")
-include_directories(include
-    src
-    external
-    "${CMAKE_CURRENT_BINARY_DIR}/version"
-    )
+
 if(APPLE)
     include_directories(SYSTEM /usr/include/malloc)
     enable_language(ASM)
@@ -64,7 +70,7 @@ endif()
 if(MSVC)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Windows)
 elseif(APPLE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.10)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/OSX)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
 else()
@@ -98,7 +104,7 @@ else()
     else()
         set(ARCH_FLAG "-march=${ARCH}")
     endif()
-    set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Werror -Wno-error=extra -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+    set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Wno-error=extra -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
     if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
         set(WARNINGS "${WARNINGS} -Wno-error=mismatched-tags -Wno-error=null-conversion -Wno-overloaded-shift-op-parentheses -Wno-error=shift-count-overflow -Wno-error=tautological-constant-out-of-range-compare -Wno-error=unused-private-field -Wno-error=unneeded-internal-declaration -Wno-error=unused-function -Wno-error=missing-braces -Wno-unused-lambda-capture -Wno-exceptions -Wno-unknown-pragmas")
     else()
@@ -126,9 +132,11 @@ else()
     if(NOT APPLE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${MINGW_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} -maes")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MINGW_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} -maes")
     if(APPLE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGTEST_HAS_TR1_TUPLE=0")
+        #  Disable ld boost warnings
+        set(CMAKE_CXX_VISIBILITY_PRESET hidden)
     endif()
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8))
         set(DEBUG_FLAGS "-g3 -Og -gdwarf-4 -fvar-tracking -fvar-tracking-assignments -fno-inline -fno-omit-frame-pointer")
@@ -175,6 +183,8 @@ else()
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
     endif()
 endif()
+
+set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_IGNORE_SYSTEM_PATHS_DEFAULT OFF)
 option(BOOST_IGNORE_SYSTEM_PATHS "Ignore boost system paths for local boost installation" ${BOOST_IGNORE_SYSTEM_PATHS_DEFAULT})
 if (${BOOST_IGNORE_SYSTEM_PATHS} STREQUAL "ON")
@@ -184,7 +194,7 @@ if(STATIC)
     set(Boost_USE_STATIC_LIBS ON)
     set(Boost_USE_STATIC_RUNTIME ON)
 endif()
-find_package(Boost 1.55 REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options)
+find_package(Boost 1.68 REQUIRED COMPONENTS atomic system filesystem thread date_time chrono regex serialization program_options)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 if(MINGW)
     set(Boost_LIBRARIES "${Boost_LIBRARIES};ws2_32;mswsock")
@@ -198,7 +208,7 @@ endif()
 #---------#
 # Summary #
 #---------#
-message(STATUS " ")
+
 message(STATUS "========== building ${PROJECT_NAME} Core version : ${PROJECT_VERSION} build ${PROJECT_VERSION_TWEAK} ${CMAKE_BUILD_TYPE} =======")
 message(STATUS "Compiler : ${CMAKE_CXX_COMPILER_ID} version ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "Version : ${VERSION}")
@@ -206,10 +216,8 @@ message(STATUS "Revision : ${COMMIT_ID}")
 message(STATUS "Arch : ${ARCH}")
 message(STATUS "Boost version : ${Boost_LIB_VERSION}")
 message(STATUS "Link libraries statically : ${STATIC}" )
-message(STATUS "Portable : ${PORTABLE}" )
 message(STATUS "Build tests : " ${BUILD_TESTS})
 message(STATUS "----------------------------------------------------------")
-
 message(STATUS "C Flags ${CMAKE_C_FLAGS_RELEASE}")
 message(STATUS "CXX Flags ${CMAKE_CXX_FLAGS_RELEASE}")
 

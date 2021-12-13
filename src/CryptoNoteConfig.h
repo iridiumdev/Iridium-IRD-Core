@@ -108,14 +108,14 @@ const char     CRYPTONOTE_NAME[]                             = "iridium";
 
 const uint8_t  TRANSACTION_VERSION_1                         =  1;
 const uint8_t  TRANSACTION_VERSION_2                         =  2;
-const uint8_t  CURRENT_TRANSACTION_VERSION                   =  TRANSACTION_VERSION_1;
+const uint8_t  CURRENT_TRANSACTION_VERSION          =  TRANSACTION_VERSION_1;
 const uint8_t  BLOCK_MAJOR_VERSION_1                         =  1;
 const uint8_t  BLOCK_MAJOR_VERSION_2                         =  2;
 const uint8_t  BLOCK_MAJOR_VERSION_3                         =  3;
 const uint8_t  BLOCK_MAJOR_VERSION_4                         =  4;
 const uint8_t  BLOCK_MAJOR_VERSION_5                         =  5;
-const uint8_t  BLOCK_MINOR_VERSION_0                         =  0;
 const uint8_t  BLOCK_MINOR_VERSION_1                         =  1;
+const uint8_t  BLOCK_MINOR_VERSION_0                         =  0;
 
 const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by default, blocks ids count in synchronizing
 const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  250;    //by default, blocks count in blocks downloading
@@ -146,13 +146,10 @@ const uint32_t DB_DEFAULT_MAX_OPEN_FILES                     = 500;           //
 const uint16_t DB_DEFAULT_BACKGROUND_THREADS_COUNT           = 10;            // 10 threads
 
 const char* const SEED_NODES[] = {
-    "144.208.96.2:12001", /*EXP*/
-    "5.178.66.70:12001", /*AMS*/
-    "192.99.8.12:12007", /*MTL*/
-    "139.99.131.92:12017", /*SDN*/
-    "139.99.131.92:12018",
-    "139.99.131.92:12019",
-    "139.99.131.92:12020",
+    "5.178.66.72:12001", /*EXP*/
+    "5.178.66.72:12002",
+    "5.178.66.72:12003",
+    "5.178.66.70:12001"  /*AMS*/
 };
 
 
@@ -166,7 +163,9 @@ const std::initializer_list<CheckpointData> CHECKPOINTS = {
     {69500,"1e6f58fac635e3e0a0ca3845f6a07abaf4080c36dd91bfab315f6cdb657cc775"},
     {95250,"a5d8f703b1e4afa73b9f3050b9972c2b23730fcb5c916b521bc7d6ce2ad4c959"},
     {115200,"896c2d44deca8b1349e55f88ee8795d51bfc7b0feb4a59562fda61ae6e1f9fa5"},
-    {326170,"c7c10ab747450250b84806fdba71d4d3c8149b3773ff8510069034550809d034"}
+    {326170,"c7c10ab747450250b84806fdba71d4d3c8149b3773ff8510069034550809d034"},
+    {671900,"4ceb15f5ce089df2e7f0480d26ce276b26fb93cf96269d6b85f475c8c388ba5d"},
+     {770935,"fd6c5a3f578333c7d31cac9f3ef51ebbe864b579ab4264d39bbf11c921a7b91b"}
 };
 
 } // CryptoNote

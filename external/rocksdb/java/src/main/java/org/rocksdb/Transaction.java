@@ -433,6 +433,33 @@ public class Transaction extends RocksObject {
    * @param key the key to retrieve the value for.
    * @param exclusive true if the transaction should have exclusive access to
    *     the key, otherwise false for shared access.
+   * @param doValidate true if it should validate the snapshot before doing the read
+   *
+   * @return a byte array storing the value associated with the input key if
+   *     any.  null if it does not find the specified key.
+   *
+   * @throws RocksDBException thrown if error happens in underlying
+   *    native library.
+   */
+  public byte[] getForUpdate(final ReadOptions readOptions,
+      final ColumnFamilyHandle columnFamilyHandle, final byte[] key, final boolean exclusive,
+      final boolean doValidate) throws RocksDBException {
+    assert (isOwningHandle());
+    return getForUpdate(nativeHandle_, readOptions.nativeHandle_, key, key.length,
+        columnFamilyHandle.nativeHandle_, exclusive, doValidate);
+  }
+
+  /**
+   * Same as
+   * {@link #getForUpdate(ReadOptions, ColumnFamilyHandle, byte[], boolean, boolean)}
+   * with doValidate=true.
+   *
+   * @param readOptions Read options.
+   * @param columnFamilyHandle {@link org.rocksdb.ColumnFamilyHandle}
+   *     instance
+   * @param key the key to retrieve the value for.
+   * @param exclusive true if the transaction should have exclusive access to
+   *     the key, otherwise false for shared access.
    *
    * @return a byte array storing the value associated with the input key if
    *     any.  null if it does not find the specified key.
@@ -444,8 +471,8 @@ public class Transaction extends RocksObject {
       final ColumnFamilyHandle columnFamilyHandle, final byte[] key,
       final boolean exclusive) throws RocksDBException {
     assert(isOwningHandle());
-    return getForUpdate(nativeHandle_, readOptions.nativeHandle_, key,
-        key.length, columnFamilyHandle.nativeHandle_, exclusive);
+    return getForUpdate(nativeHandle_, readOptions.nativeHandle_, key, key.length,
+        columnFamilyHandle.nativeHandle_, exclusive, true /*doValidate*/);
   }
 
   /**
@@ -495,8 +522,8 @@ public class Transaction extends RocksObject {
   public byte[] getForUpdate(final ReadOptions readOptions, final byte[] key,
       final boolean exclusive) throws RocksDBException {
     assert(isOwningHandle());
-    return getForUpdate(nativeHandle_, readOptions.nativeHandle_, key,
-        key.length, exclusive);
+    return getForUpdate(
+        nativeHandle_, readOptions.nativeHandle_, key, key.length, exclusive, true /*doValidate*/);
   }
 
   /**
@@ -631,6 +658,43 @@ public class Transaction extends RocksObject {
    * @param columnFamilyHandle The column family to put the key/value into
    * @param key the specified key to be inserted.
    * @param value the value associated with the specified key.
+   * @param assumeTracked true when it is expected that the key is already
+   *     tracked. More specifically, it means the the key was previous tracked
+   *     in the same savepoint, with the same exclusive flag, and at a lower
+   *     sequence number. If valid then it skips ValidateSnapshot,
+   *     throws an error otherwise.
+   *
+   * @throws RocksDBException when one of the TransactionalDB conditions
+   *     described above occurs, or in the case of an unexpected error
+   */
+  public void put(final ColumnFamilyHandle columnFamilyHandle, final byte[] key,
+      final byte[] value, final boolean assumeTracked) throws RocksDBException {
+    assert (isOwningHandle());
+    put(nativeHandle_, key, key.length, value, value.length,
+        columnFamilyHandle.nativeHandle_, assumeTracked);
+  }
+
+  /**
+   * Similar to {@link #put(ColumnFamilyHandle, byte[], byte[], boolean)}
+   * but with {@code assumeTracked = false}.
+   *
+   * Will also perform conflict checking on the keys be written.
+   *
+   * If this Transaction was created on an {@link OptimisticTransactionDB},
+   * these functions should always succeed.
+   *
+   * If this Transaction was created on a {@link TransactionDB}, an
+   * {@link RocksDBException} may be thrown with an accompanying {@link Status}
+   * when:
+   *     {@link Status.Code#Busy} if there is a write conflict,
+   *     {@link Status.Code#TimedOut} if a lock could not be acquired,
+   *     {@link Status.Code#TryAgain} if the memtable history size is not large
+   *         enough. See
+   *         {@link ColumnFamilyOptions#maxWriteBufferNumberToMaintain()}
+   *
+   * @param columnFamilyHandle The column family to put the key/value into
+   * @param key the specified key to be inserted.
+   * @param value the value associated with the specified key.
    *
    * @throws RocksDBException when one of the TransactionalDB conditions
    *     described above occurs, or in the case of an unexpected error
@@ -639,7 +703,7 @@ public class Transaction extends RocksObject {
       final byte[] value) throws RocksDBException {
     assert(isOwningHandle());
     put(nativeHandle_, key, key.length, value, value.length,
-        columnFamilyHandle.nativeHandle_);
+        columnFamilyHandle.nativeHandle_, false);
   }
 
   /**
@@ -679,6 +743,33 @@ public class Transaction extends RocksObject {
    * @param columnFamilyHandle The column family to put the key/value into
    * @param keyParts the specified key to be inserted.
    * @param valueParts the value associated with the specified key.
+   * @param assumeTracked true when it is expected that the key is already
+   *     tracked. More specifically, it means the the key was previous tracked
+   *     in the same savepoint, with the same exclusive flag, and at a lower
+   *     sequence number. If valid then it skips ValidateSnapshot,
+   *     throws an error otherwise.
+   *
+   * @throws RocksDBException when one of the TransactionalDB conditions
+   *     described above occurs, or in the case of an unexpected error
+   */
+  public void put(final ColumnFamilyHandle columnFamilyHandle,
+      final byte[][] keyParts, final byte[][] valueParts,
+      final boolean assumeTracked) throws RocksDBException {
+    assert (isOwningHandle());
+    put(nativeHandle_, keyParts, keyParts.length, valueParts, valueParts.length,
+        columnFamilyHandle.nativeHandle_, assumeTracked);
+  }
+
+  /**
+   * Similar to {@link #put(ColumnFamilyHandle, byte[][], byte[][], boolean)}
+   * but with with {@code assumeTracked = false}.
+   *
+   * Allows you to specify the key and value in several parts that will be
+   * concatenated together.
+   *
+   * @param columnFamilyHandle The column family to put the key/value into
+   * @param keyParts the specified key to be inserted.
+   * @param valueParts the value associated with the specified key.
    *
    * @throws RocksDBException when one of the TransactionalDB conditions
    *     described above occurs, or in the case of an unexpected error
@@ -688,7 +779,7 @@ public class Transaction extends RocksObject {
       throws RocksDBException {
     assert(isOwningHandle());
     put(nativeHandle_, keyParts, keyParts.length, valueParts, valueParts.length,
-        columnFamilyHandle.nativeHandle_);
+        columnFamilyHandle.nativeHandle_, false);
   }
 
   //TODO(AR) refactor if we implement org.rocksdb.SliceParts in future
@@ -729,6 +820,44 @@ public class Transaction extends RocksObject {
    * @param columnFamilyHandle The column family to merge the key/value into
    * @param key the specified key to be merged.
    * @param value the value associated with the specified key.
+   * @param assumeTracked true when it is expected that the key is already
+   *     tracked. More specifically, it means the the key was previous tracked
+   *     in the same savepoint, with the same exclusive flag, and at a lower
+   *     sequence number. If valid then it skips ValidateSnapshot,
+   *     throws an error otherwise.
+   *
+   * @throws RocksDBException when one of the TransactionalDB conditions
+   *     described above occurs, or in the case of an unexpected error
+   */
+  public void merge(final ColumnFamilyHandle columnFamilyHandle,
+      final byte[] key, final byte[] value, final boolean assumeTracked)
+      throws RocksDBException {
+    assert (isOwningHandle());
+    merge(nativeHandle_, key, key.length, value, value.length,
+        columnFamilyHandle.nativeHandle_, assumeTracked);
+  }
+
+  /**
+   * Similar to {@link #merge(ColumnFamilyHandle, byte[], byte[], boolean)}
+   * but with {@code assumeTracked = false}.
+   *
+   * Will also perform conflict checking on the keys be written.
+   *
+   * If this Transaction was created on an {@link OptimisticTransactionDB},
+   * these functions should always succeed.
+   *
+   *  If this Transaction was created on a {@link TransactionDB}, an
+   *  {@link RocksDBException} may be thrown with an accompanying {@link Status}
+   *  when:
+   *    {@link Status.Code#Busy} if there is a write conflict,
+   *    {@link Status.Code#TimedOut} if a lock could not be acquired,
+   *    {@link Status.Code#TryAgain} if the memtable history size is not large
+   *       enough. See
+   *       {@link ColumnFamilyOptions#maxWriteBufferNumberToMaintain()}
+   *
+   * @param columnFamilyHandle The column family to merge the key/value into
+   * @param key the specified key to be merged.
+   * @param value the value associated with the specified key.
    *
    * @throws RocksDBException when one of the TransactionalDB conditions
    *     described above occurs, or in the case of an unexpected error
@@ -737,7 +866,7 @@ public class Transaction extends RocksObject {
       final byte[] key, final byte[] value) throws RocksDBException {
     assert(isOwningHandle());
     merge(nativeHandle_, key, key.length, value, value.length,
-        columnFamilyHandle.nativeHandle_);
+        columnFamilyHandle.nativeHandle_, false);
   }
 
   /**
@@ -786,6 +915,42 @@ public class Transaction extends RocksObject {
    *
    * @param columnFamilyHandle The column family to delete the key/value from
    * @param key the specified key to be deleted.
+   * @param assumeTracked true when it is expected that the key is already
+   *     tracked. More specifically, it means the the key was previous tracked
+   *     in the same savepoint, with the same exclusive flag, and at a lower
+   *     sequence number. If valid then it skips ValidateSnapshot,
+   *     throws an error otherwise.
+   *
+   * @throws RocksDBException when one of the TransactionalDB conditions
+   *     described above occurs, or in the case of an unexpected error
+   */
+  public void delete(final ColumnFamilyHandle columnFamilyHandle,
+      final byte[] key, final boolean assumeTracked) throws RocksDBException {
+    assert (isOwningHandle());
+    delete(nativeHandle_, key, key.length, columnFamilyHandle.nativeHandle_,
+        assumeTracked);
+  }
+
+  /**
+   * Similar to {@link #delete(ColumnFamilyHandle, byte[], boolean)}
+   * but with {@code assumeTracked = false}.
+   *
+   * Will also perform conflict checking on the keys be written.
+   *
+   * If this Transaction was created on an {@link OptimisticTransactionDB},
+   * these functions should always succeed.
+   *
+   *  If this Transaction was created on a {@link TransactionDB}, an
+   *  {@link RocksDBException} may be thrown with an accompanying {@link Status}
+   *  when:
+   *    {@link Status.Code#Busy} if there is a write conflict,
+   *    {@link Status.Code#TimedOut} if a lock could not be acquired,
+   *    {@link Status.Code#TryAgain} if the memtable history size is not large
+   *       enough. See
+   *       {@link ColumnFamilyOptions#maxWriteBufferNumberToMaintain()}
+   *
+   * @param columnFamilyHandle The column family to delete the key/value from
+   * @param key the specified key to be deleted.
    *
    * @throws RocksDBException when one of the TransactionalDB conditions
    *     described above occurs, or in the case of an unexpected error
@@ -793,7 +958,8 @@ public class Transaction extends RocksObject {
   public void delete(final ColumnFamilyHandle columnFamilyHandle,
       final byte[] key) throws RocksDBException {
     assert(isOwningHandle());
-    delete(nativeHandle_, key, key.length, columnFamilyHandle.nativeHandle_);
+    delete(nativeHandle_, key, key.length, columnFamilyHandle.nativeHandle_,
+        /*assumeTracked*/ false);
   }
 
   /**
@@ -830,6 +996,32 @@ public class Transaction extends RocksObject {
    *
    * @param columnFamilyHandle The column family to delete the key/value from
    * @param keyParts the specified key to be deleted.
+   * @param assumeTracked true when it is expected that the key is already
+   *     tracked. More specifically, it means the the key was previous tracked
+   *     in the same savepoint, with the same exclusive flag, and at a lower
+   *     sequence number. If valid then it skips ValidateSnapshot,
+   *     throws an error otherwise.
+   *
+   * @throws RocksDBException when one of the TransactionalDB conditions
+   *     described above occurs, or in the case of an unexpected error
+   */
+  public void delete(final ColumnFamilyHandle columnFamilyHandle,
+      final byte[][] keyParts, final boolean assumeTracked)
+      throws RocksDBException {
+    assert (isOwningHandle());
+    delete(nativeHandle_, keyParts, keyParts.length,
+        columnFamilyHandle.nativeHandle_, assumeTracked);
+  }
+
+  /**
+   * Similar to{@link #delete(ColumnFamilyHandle, byte[][], boolean)}
+   * but with {@code assumeTracked = false}.
+   *
+   * Allows you to specify the key in several parts that will be
+   * concatenated together.
+   *
+   * @param columnFamilyHandle The column family to delete the key/value from
+   * @param keyParts the specified key to be deleted.
    *
    * @throws RocksDBException when one of the TransactionalDB conditions
    *     described above occurs, or in the case of an unexpected error
@@ -838,7 +1030,7 @@ public class Transaction extends RocksObject {
       final byte[][] keyParts) throws RocksDBException {
     assert(isOwningHandle());
     delete(nativeHandle_, keyParts, keyParts.length,
-        columnFamilyHandle.nativeHandle_);
+        columnFamilyHandle.nativeHandle_, false);
   }
 
   //TODO(AR) refactor if we implement org.rocksdb.SliceParts in future
@@ -875,6 +1067,43 @@ public class Transaction extends RocksObject {
    *
    * @param columnFamilyHandle The column family to delete the key/value from
    * @param key the specified key to be deleted.
+   * @param assumeTracked true when it is expected that the key is already
+   *     tracked. More specifically, it means the the key was previous tracked
+   *     in the same savepoint, with the same exclusive flag, and at a lower
+   *     sequence number. If valid then it skips ValidateSnapshot,
+   *     throws an error otherwise.
+   *
+   * @throws RocksDBException when one of the TransactionalDB conditions
+   *     described above occurs, or in the case of an unexpected error
+   */
+  @Experimental("Performance optimization for a very specific workload")
+  public void singleDelete(final ColumnFamilyHandle columnFamilyHandle,
+      final byte[] key, final boolean assumeTracked) throws RocksDBException {
+    assert (isOwningHandle());
+    singleDelete(nativeHandle_, key, key.length,
+        columnFamilyHandle.nativeHandle_, assumeTracked);
+  }
+
+  /**
+   * Similar to {@link #singleDelete(ColumnFamilyHandle, byte[], boolean)}
+   * but with {@code assumeTracked = false}.
+   *
+   * will also perform conflict checking on the keys be written.
+   *
+   * If this Transaction was created on an {@link OptimisticTransactionDB},
+   * these functions should always succeed.
+   *
+   *  If this Transaction was created on a {@link TransactionDB}, an
+   *  {@link RocksDBException} may be thrown with an accompanying {@link Status}
+   *  when:
+   *    {@link Status.Code#Busy} if there is a write conflict,
+   *    {@link Status.Code#TimedOut} if a lock could not be acquired,
+   *    {@link Status.Code#TryAgain} if the memtable history size is not large
+   *       enough. See
+   *       {@link ColumnFamilyOptions#maxWriteBufferNumberToMaintain()}
+   *
+   * @param columnFamilyHandle The column family to delete the key/value from
+   * @param key the specified key to be deleted.
    *
    * @throws RocksDBException when one of the TransactionalDB conditions
    *     described above occurs, or in the case of an unexpected error
@@ -884,7 +1113,7 @@ public class Transaction extends RocksObject {
       final byte[] key) throws RocksDBException {
     assert(isOwningHandle());
     singleDelete(nativeHandle_, key, key.length,
-        columnFamilyHandle.nativeHandle_);
+        columnFamilyHandle.nativeHandle_, false);
   }
 
   /**
@@ -922,6 +1151,33 @@ public class Transaction extends RocksObject {
    *
    * @param columnFamilyHandle The column family to delete the key/value from
    * @param keyParts the specified key to be deleted.
+   * @param assumeTracked true when it is expected that the key is already
+   *     tracked. More specifically, it means the the key was previous tracked
+   *     in the same savepoint, with the same exclusive flag, and at a lower
+   *     sequence number. If valid then it skips ValidateSnapshot,
+   *     throws an error otherwise.
+   *
+   * @throws RocksDBException when one of the TransactionalDB conditions
+   *     described above occurs, or in the case of an unexpected error
+   */
+  @Experimental("Performance optimization for a very specific workload")
+  public void singleDelete(final ColumnFamilyHandle columnFamilyHandle,
+      final byte[][] keyParts, final boolean assumeTracked)
+      throws RocksDBException {
+    assert (isOwningHandle());
+    singleDelete(nativeHandle_, keyParts, keyParts.length,
+        columnFamilyHandle.nativeHandle_, assumeTracked);
+  }
+
+  /**
+   * Similar to{@link #singleDelete(ColumnFamilyHandle, byte[][], boolean)}
+   * but with {@code assumeTracked = false}.
+   *
+   * Allows you to specify the key in several parts that will be
+   * concatenated together.
+   *
+   * @param columnFamilyHandle The column family to delete the key/value from
+   * @param keyParts the specified key to be deleted.
    *
    * @throws RocksDBException when one of the TransactionalDB conditions
    *     described above occurs, or in the case of an unexpected error
@@ -931,7 +1187,7 @@ public class Transaction extends RocksObject {
       final byte[][] keyParts) throws RocksDBException {
     assert(isOwningHandle());
     singleDelete(nativeHandle_, keyParts, keyParts.length,
-        columnFamilyHandle.nativeHandle_);
+        columnFamilyHandle.nativeHandle_, false);
   }
 
   //TODO(AR) refactor if we implement org.rocksdb.SliceParts in future
@@ -1642,13 +1898,12 @@ public class Transaction extends RocksObject {
   private native byte[][] multiGet(final long handle,
       final long readOptionsHandle, final byte[][] keys)
       throws RocksDBException;
-  private native byte[] getForUpdate(final long handle,
-      final long readOptionsHandle, final byte key[], final int keyLength,
-      final long columnFamilyHandle, final boolean exclusive)
+  private native byte[] getForUpdate(final long handle, final long readOptionsHandle,
+      final byte key[], final int keyLength, final long columnFamilyHandle, final boolean exclusive,
+      final boolean doValidate) throws RocksDBException;
+  private native byte[] getForUpdate(final long handle, final long readOptionsHandle,
+      final byte key[], final int keyLen, final boolean exclusive, final boolean doValidate)
       throws RocksDBException;
-  private native byte[] getForUpdate(final long handle,
-      final long readOptionsHandle, final byte key[], final int keyLen,
-      final boolean exclusive) throws RocksDBException;
   private native byte[][] multiGetForUpdate(final long handle,
       final long readOptionsHandle, final byte[][] keys,
       final long[] columnFamilyHandles) throws RocksDBException;
@@ -1659,42 +1914,38 @@ public class Transaction extends RocksObject {
       final long readOptionsHandle);
   private native long getIterator(final long handle,
       final long readOptionsHandle, final long columnFamilyHandle);
-  private native void put(final long handle, final byte[] key,
-      final int keyLength, final byte[] value, final int valueLength,
-      final long columnFamilyHandle) throws RocksDBException;
+  private native void put(final long handle, final byte[] key, final int keyLength,
+      final byte[] value, final int valueLength, final long columnFamilyHandle,
+      final boolean assumeTracked) throws RocksDBException;
   private native void put(final long handle, final byte[] key,
       final int keyLength, final byte[] value, final int valueLength)
       throws RocksDBException;
-  private native void put(final long handle, final byte[][] keys,
-      final int keysLength, final byte[][] values, final int valuesLength,
-      final long columnFamilyHandle) throws RocksDBException;
+  private native void put(final long handle, final byte[][] keys, final int keysLength,
+      final byte[][] values, final int valuesLength, final long columnFamilyHandle,
+      final boolean assumeTracked) throws RocksDBException;
   private native void put(final long handle, final byte[][] keys,
       final int keysLength, final byte[][] values, final int valuesLength)
       throws RocksDBException;
-  private native void merge(final long handle, final byte[] key,
-      final int keyLength, final byte[] value, final int valueLength,
-      final long columnFamilyHandle) throws RocksDBException;
+  private native void merge(final long handle, final byte[] key, final int keyLength,
+      final byte[] value, final int valueLength, final long columnFamilyHandle,
+      final boolean assumeTracked) throws RocksDBException;
   private native void merge(final long handle, final byte[] key,
       final int keyLength, final byte[] value, final int valueLength)
       throws RocksDBException;
-  private native void delete(final long handle, final byte[] key,
-      final int keyLength, final long columnFamilyHandle)
-      throws RocksDBException;
+  private native void delete(final long handle, final byte[] key, final int keyLength,
+      final long columnFamilyHandle, final boolean assumeTracked) throws RocksDBException;
   private native void delete(final long handle, final byte[] key,
       final int keyLength) throws RocksDBException;
-  private native void delete(final long handle, final byte[][] keys,
-      final int keysLength, final long columnFamilyHandle)
-      throws RocksDBException;
+  private native void delete(final long handle, final byte[][] keys, final int keysLength,
+      final long columnFamilyHandle, final boolean assumeTracked) throws RocksDBException;
   private native void delete(final long handle, final byte[][] keys,
       final int keysLength) throws RocksDBException;
-  private native void singleDelete(final long handle, final byte[] key,
-      final int keyLength, final long columnFamilyHandle)
-      throws RocksDBException;
+  private native void singleDelete(final long handle, final byte[] key, final int keyLength,
+      final long columnFamilyHandle, final boolean assumeTracked) throws RocksDBException;
   private native void singleDelete(final long handle, final byte[] key,
       final int keyLength) throws RocksDBException;
-  private native void singleDelete(final long handle, final byte[][] keys,
-      final int keysLength, final long columnFamilyHandle)
-      throws RocksDBException;
+  private native void singleDelete(final long handle, final byte[][] keys, final int keysLength,
+      final long columnFamilyHandle, final boolean assumeTracked) throws RocksDBException;
   private native void singleDelete(final long handle, final byte[][] keys,
       final int keysLength) throws RocksDBException;
   private native void putUntracked(final long handle, final byte[] key,

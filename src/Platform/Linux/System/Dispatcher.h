@@ -9,6 +9,9 @@
 #include <functional>
 #include <queue>
 #include <stack>
+#include <cstdint>
+#include <exception>
+#include <stdexcept>
 
 namespace System {
 

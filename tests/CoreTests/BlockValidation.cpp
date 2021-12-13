@@ -26,7 +26,8 @@ bool lift_up_difficulty(const CryptoNote::Currency& currency, std::vector<test_e
   CryptoNote::BlockTemplate blk_prev = blk_last;
   for (size_t i = 0; i < new_block_count; ++i) {
     CryptoNote::BlockTemplate blk_next;
-    CryptoNote::Difficulty diffic = currency.nextDifficulty(timestamps, cummulative_difficulties);
+    uint32_t  blockindex = 100;
+    CryptoNote::Difficulty diffic = currency.nextDifficulty(blk_next.majorVersion,blockindex,timestamps, cummulative_difficulties);
     if (!generator.constructBlockManually(blk_next, blk_prev, miner_account,
                                           test_generator::bf_major_ver | test_generator::bf_timestamp |
                                               test_generator::bf_diffic,
@@ -244,8 +245,13 @@ bool gen_block_invalid_nonce::generate(std::vector<test_event_entry>& events) co
     return false;
   }
 
+const uint8_t version = 10;
+
   // Create invalid nonce
-  Difficulty diffic = m_currency->nextDifficulty(timestamps, commulative_difficulties);
+//  Difficulty diffic = m_currency.nextDifficulty( m_blockMajorVersion, 100, timestamps, commulative_difficulties);
+//   Difficulty diffic =  m_currency->nextDifficulty(version, m_invalidBlockIdx, timestamps, commulative_difficulties);
+
+    Difficulty diffic = 100;
   assert(1 < diffic);
   const BlockTemplate& blk_last = boost::get<BlockTemplate>(events.back());
   uint64_t timestamp = blk_last.timestamp;
@@ -672,7 +678,8 @@ bool gen_block_invalid_binary_format::generate(std::vector<test_event_entry>& ev
   Difficulty diffic;
   do {
     blk_last = boost::get<BlockTemplate>(events.back());
-    diffic = m_currency->nextDifficulty(timestamps, cummulative_difficulties);
+//    diffic = m_currency->nextDifficulty(timestamps, cummulative_difficulties);
+     diffic = 100;
     if (!lift_up_difficulty(*m_currency, events, timestamps, cummulative_difficulties, generator, 1, blk_last,
                             miner_account, m_blockMajorVersion)) {
       return false;
@@ -688,7 +695,8 @@ bool gen_block_invalid_binary_format::generate(std::vector<test_event_entry>& ev
   std::vector<Crypto::Hash> tx_hashes;
   tx_hashes.push_back(getObjectHash(tx_0));
   size_t txs_size = getObjectBinarySize(tx_0);
-  diffic = m_currency->nextDifficulty(timestamps, cummulative_difficulties);
+//  diffic = m_currency->nextDifficulty(timestamps, cummulative_difficulties);
+  diffic = 100;
   if (!generator.constructBlockManually(
           blk_test, blk_last, miner_account, test_generator::bf_major_ver | test_generator::bf_diffic |
                                                  test_generator::bf_timestamp | test_generator::bf_tx_hashes,

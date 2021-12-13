@@ -15,7 +15,7 @@
 using namespace std;
 typedef Crypto::Hash chash;
 
-Crypto::cn_context *context;
+//Crypto::cn_context *context;
 
 extern "C" {
 #ifdef _MSC_VER
@@ -29,10 +29,67 @@ extern "C" {
     Crypto::tree_hash((const char (*)[32]) data, length >> 5, hash);
   }
 
+  static void cn_pico_slow_hash_v0(const void *data, size_t length, char *hash) {
+    Crypto::cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 0, 0, CN_PICO_PAGE_SIZE, CN_PICO_SCRATCHPAD, CN_PICO_ITERATIONS);
+  }
+
   static void slow_hash(const void *data, size_t length, char *hash) {
-    cn_slow_hash(*context, data, length, *reinterpret_cast<chash *>(hash));
+    Crypto::cn_slow_hash_v0(data, length, *reinterpret_cast<chash *>(hash));
   }
 }
+
+
+// Standard Cryptonight Definitions
+//inline void cn_slow_hash_v0(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 0, 0, CN_PAGE_SIZE, CN_SCRATCHPAD, CN_ITERATIONS);
+//}
+
+//inline void cn_slow_hash_v1(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 1, 0, CN_PAGE_SIZE, CN_SCRATCHPAD, CN_ITERATIONS);
+//}
+
+//inline void cn_slow_hash_v2(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 0, 2, 0,  CN_PAGE_SIZE, CN_SCRATCHPAD, CN_ITERATIONS);
+//}
+
+
+// Standard Cryptonight Lite Definitions
+//inline void cn_lite_slow_hash_v0(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 0, 0, CN_LITE_PAGE_SIZE, CN_LITE_SCRATCHPAD, CN_LITE_ITERATIONS);
+//}
+
+//inline void cn_lite_slow_hash_v1(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 1, 0, CN_LITE_PAGE_SIZE, CN_LITE_SCRATCHPAD, CN_LITE_ITERATIONS);
+//}
+
+//inline void cn_lite_slow_hash_v2(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 2, 0, CN_LITE_PAGE_SIZE, CN_LITE_SCRATCHPAD, CN_LITE_ITERATIONS);
+//}
+
+// Standard Cryptonight lite Pico/Trtl
+//inline void cn_pico_slow_hash_v0(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 0, 0, CN_PICO_PAGE_SIZE, CN_PICO_SCRATCHPAD, CN_PICO_ITERATIONS);
+//}
+
+//inline void cn_pico_slow_hash_v1(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 1, 0, CN_PICO_PAGE_SIZE, CN_PICO_SCRATCHPAD, CN_PICO_ITERATIONS);
+//}
+
+//inline void cn_pico_slow_hash_v2(const void *data, size_t length, Hash &hash) {
+//  cn_slow_hash(data, length, reinterpret_cast<char *>(&hash), 1, 2, 0, CN_PICO_PAGE_SIZE, CN_PICO_SCRATCHPAD, CN_PICO_ITERATIONS);
+//}
+
+//inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
+//  tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));
+//}
+
+//inline void tree_branch(const Hash *hashes, size_t count, Hash *branch) {
+//  tree_branch(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char (*)[HASH_SIZE]>(branch));
+//}
+
+//inline void tree_hash_from_branch(const Hash *branch, size_t depth, const Hash &leaf, const void *path, Hash &root_hash) {
+//  tree_hash_from_branch(reinterpret_cast<const char (*)[HASH_SIZE]>(branch), depth, reinterpret_cast<const char *>(&leaf), path, reinterpret_cast<char *>(&root_hash));
+//}
 
 extern "C" typedef void hash_f(const void *, size_t, char *);
 struct hash_func {
@@ -64,9 +121,9 @@ int main(int argc, char *argv[]) {
       break;
     }
   }
-  if (f == slow_hash) {
-    context = new Crypto::cn_context();
-  }
+//  if (f == slow_hash) {
+//    context = new Crypto::cn_context();
+//  }
   input.open(argv[2], ios_base::in);
   for (;;) {
     ++test;

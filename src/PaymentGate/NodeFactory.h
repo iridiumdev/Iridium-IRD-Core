@@ -8,7 +8,7 @@
 #include "INode.h"
 
 #include <string>
-
+#include <memory>
 #include "Logging/LoggerRef.h"
 
 namespace PaymentService {

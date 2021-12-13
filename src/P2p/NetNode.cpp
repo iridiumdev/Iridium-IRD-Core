@@ -218,7 +218,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     s(m_config.m_peer_id, "peer_id");
   }
 
-#define INVOKE_HANDLER(CMD, Handler) case CMD::ID: { ret = invokeAdaptor<CMD>(cmd.buf, out, ctx,  boost::bind(Handler, this, _1, _2, _3, _4)); break; }
+#define INVOKE_HANDLER(CMD, Handler) case CMD::ID: { ret = invokeAdaptor<CMD>(cmd.buf, out, ctx,  std::bind(Handler, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)); break; }
 
   int NodeServer::handleCommand(const LevinProtocol::Command& cmd, BinaryArray& out, P2pConnectionContext& ctx, bool& handled) {
     int ret = 0;

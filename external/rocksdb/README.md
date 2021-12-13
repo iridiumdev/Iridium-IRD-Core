@@ -5,15 +5,15 @@
 [![PPC64le Build Status](http://140.211.168.68:8080/buildStatus/icon?job=Rocksdb)](http://140.211.168.68:8080/job/Rocksdb)
 
 RocksDB is developed and maintained by Facebook Database Engineering Team.
-It is built on earlier work on LevelDB by Sanjay Ghemawat (sanjay@google.com)
+It is built on earlier work on [LevelDB](https://github.com/google/leveldb) by Sanjay Ghemawat (sanjay@google.com)
 and Jeff Dean (jeff@google.com)
 
 This code is a library that forms the core building block for a fast
-key value server, especially suited for storing data on flash drives.
+key-value server, especially suited for storing data on flash drives.
 It has a Log-Structured-Merge-Database (LSM) design with flexible tradeoffs
 between Write-Amplification-Factor (WAF), Read-Amplification-Factor (RAF)
 and Space-Amplification-Factor (SAF). It has multi-threaded compactions,
-making it specially suitable for storing multiple terabytes of data in a
+making it especially suitable for storing multiple terabytes of data in a
 single database.
 
 Start with example usage here: https://github.com/facebook/rocksdb/tree/master/examples

@@ -24,6 +24,8 @@
 #include "P2pContext.h"
 #include "P2pContextOwner.h"
 #include "P2pNetworks.h"
+#include <random>
+#include <algorithm>
 
 using namespace Common;
 using namespace Logging;
@@ -226,7 +228,9 @@ void P2pNode::connectPeers() {
   // if white peer list is empty, get peers from seeds
   if (m_peerlist.get_white_peers_count() == 0 && !m_cfg.getSeedNodes().empty()) {
     auto seedNodes = m_cfg.getSeedNodes();
-    std::random_shuffle(seedNodes.begin(), seedNodes.end());
+    std::random_device random;
+    std::mt19937 generator(random());
+    std::shuffle(seedNodes.begin(), seedNodes.end(),generator);
     for (const auto& seed : seedNodes) {
       auto conn = tryToConnectPeer(seed);
       if (conn != nullptr && fetchPeerList(std::move(conn))) {

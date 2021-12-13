@@ -464,25 +464,25 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   logger(log, "simplewallet"),
   m_refresh_progress_reporter(*this), 
   m_walletSynchronized(false) {
-  //m_consoleHandler.setHandler("start_mining", boost::bind(&simple_wallet::start_mining, this, _1), "start_mining [<number_of_threads>] - Start mining in daemon");
-  //m_consoleHandler.setHandler("stop_mining", boost::bind(&simple_wallet::stop_mining, this, _1), "Stop mining in daemon");
-  //m_consoleHandler.setHandler("refresh", boost::bind(&simple_wallet::refresh, this, _1), "Resynchronize transactions and balance");
-  m_consoleHandler.setHandler("export_keys", boost::bind(&simple_wallet::export_keys, this, _1), "Show the secret keys of the opened wallet");
-  m_consoleHandler.setHandler("balance", boost::bind(&simple_wallet::show_balance, this, _1), "Show current wallet balance");
-  m_consoleHandler.setHandler("incoming_transfers", boost::bind(&simple_wallet::show_incoming_transfers, this, _1), "Show incoming transfers");
-  m_consoleHandler.setHandler("list_transfers", boost::bind(&simple_wallet::listTransfers, this, _1), "Show all known transfers");
-  m_consoleHandler.setHandler("payments", boost::bind(&simple_wallet::show_payments, this, _1), "payments <payment_id_1> [<payment_id_2> ... <payment_id_N>] - Show payments <payment_id_1>, ... <payment_id_N>");
-  m_consoleHandler.setHandler("bc_height", boost::bind(&simple_wallet::show_blockchain_height, this, _1), "Show blockchain height");
-  m_consoleHandler.setHandler("transfer", boost::bind(&simple_wallet::transfer, this, _1),
+  //m_consoleHandler.setHandler("start_mining", std::bind(&simple_wallet::start_mining, this, _1), "start_mining [<number_of_threads>] - Start mining in daemon");
+  //m_consoleHandler.setHandler("stop_mining", std::bind(&simple_wallet::stop_mining, this, _1), "Stop mining in daemon");
+  //m_consoleHandler.setHandler("refresh", std::bind(&simple_wallet::refresh, this, _1), "Resynchronize transactions and balance");
+  m_consoleHandler.setHandler("export_keys", std::bind(&simple_wallet::export_keys, this, std::placeholders::_1), "Show the secret keys of the opened wallet");
+  m_consoleHandler.setHandler("balance", std::bind(&simple_wallet::show_balance, this, std::placeholders::_1), "Show current wallet balance");
+  m_consoleHandler.setHandler("incoming_transfers", std::bind(&simple_wallet::show_incoming_transfers, this, std::placeholders::_1), "Show incoming transfers");
+  m_consoleHandler.setHandler("list_transfers", std::bind(&simple_wallet::listTransfers, this, std::placeholders::_1), "Show all known transfers");
+  m_consoleHandler.setHandler("payments", std::bind(&simple_wallet::show_payments, this, std::placeholders::_1), "payments <payment_id_1> [<payment_id_2> ... <payment_id_N>] - Show payments <payment_id_1>, ... <payment_id_N>");
+  m_consoleHandler.setHandler("bc_height", std::bind(&simple_wallet::show_blockchain_height, this, std::placeholders::_1), "Show blockchain height");
+  m_consoleHandler.setHandler("transfer", std::bind(&simple_wallet::transfer, this, std::placeholders::_1),
     "transfer <mixin_count> <addr_1> <amount_1> [<addr_2> <amount_2> ... <addr_N> <amount_N>] [-p payment_id] [-f fee]"
     " - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. "
     "<mixin_count> is the number of transactions yours is indistinguishable from (from 0 to maximum available)");
-  m_consoleHandler.setHandler("set_log", boost::bind(&simple_wallet::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
-  m_consoleHandler.setHandler("address", boost::bind(&simple_wallet::print_address, this, _1), "Show current wallet public address");
-  m_consoleHandler.setHandler("save", boost::bind(&simple_wallet::save, this, _1), "Save wallet synchronized data");
-  m_consoleHandler.setHandler("reset", boost::bind(&simple_wallet::reset, this, _1), "Discard cache data and start synchronizing from the start");
-  m_consoleHandler.setHandler("help", boost::bind(&simple_wallet::help, this, _1), "Show this help");
-  m_consoleHandler.setHandler("exit", boost::bind(&simple_wallet::exit, this, _1), "Close wallet");
+  m_consoleHandler.setHandler("set_log", std::bind(&simple_wallet::set_log, this, std::placeholders::_1), "set_log <level> - Change current log level, <level> is a number 0-4");
+  m_consoleHandler.setHandler("address", std::bind(&simple_wallet::print_address, this, std::placeholders::_1), "Show current wallet public address");
+  m_consoleHandler.setHandler("save", std::bind(&simple_wallet::save, this, std::placeholders::_1), "Save wallet synchronized data");
+  m_consoleHandler.setHandler("reset", std::bind(&simple_wallet::reset, this, std::placeholders::_1), "Discard cache data and start synchronizing from the start");
+  m_consoleHandler.setHandler("help", std::bind(&simple_wallet::help, this, std::placeholders::_1), "Show this help");
+  m_consoleHandler.setHandler("exit", std::bind(&simple_wallet::exit, this, std::placeholders::_1), "Close wallet");
 }
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::set_log(const std::vector<std::string> &args) {
