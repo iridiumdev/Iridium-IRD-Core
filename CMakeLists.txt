@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.5)
-project(iridium VERSION 5.0.0)
+project(iridium VERSION 5.0.1)
 
 #----------------#
 # Global options #
 #----------------#
 message(STATUS "------- Starting configuration ---------")
-# Enabling C++11
-set(CMAKE_CXX_STANDARD 11)
+# Enabling C++14
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 # Default build type
 set(DEFAULT_BUILD_TYPE "Release")
 # default static build without tests
@@ -36,6 +38,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
 endif()
 
+# Output directories
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
 # Compile tests on Debug
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     set(BUILD_TESTS ON)
@@ -63,7 +70,7 @@ endif()
 if(MSVC)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Windows)
 elseif(APPLE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.10)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/OSX)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
 else()
@@ -125,7 +132,7 @@ else()
     if(NOT APPLE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${MINGW_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} -maes")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MINGW_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} -maes")
     if(APPLE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGTEST_HAS_TR1_TUPLE=0")
         #  Disable ld boost warnings
@@ -187,7 +194,7 @@ if(STATIC)
     set(Boost_USE_STATIC_LIBS ON)
     set(Boost_USE_STATIC_RUNTIME ON)
 endif()
-find_package(Boost 1.55 REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options)
+find_package(Boost 1.68 REQUIRED COMPONENTS atomic system filesystem thread date_time chrono regex serialization program_options)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 if(MINGW)
     set(Boost_LIBRARIES "${Boost_LIBRARIES};ws2_32;mswsock")

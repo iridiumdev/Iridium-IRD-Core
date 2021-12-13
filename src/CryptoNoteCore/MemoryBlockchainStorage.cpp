@@ -5,6 +5,7 @@
 
 #include "MemoryBlockchainStorage.h"
 #include <cassert>
+#include <iterator>
 #include "Serialization/SerializationOverloads.h"
 
 using namespace CryptoNote;

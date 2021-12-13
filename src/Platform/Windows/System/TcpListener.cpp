@@ -5,6 +5,7 @@
 
 #include "TcpListener.h"
 #include <cassert>
+#include <stdexcept>
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
