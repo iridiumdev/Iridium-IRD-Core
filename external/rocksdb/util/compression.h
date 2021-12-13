@@ -122,6 +122,8 @@ class ZSTDUncompressCachedData {
 };
 #endif  // (ZSTD_VERSION_NUMBER >= 500)
 }  // namespace rocksdb
+#else
+#define ZSTD_VERSION_NUMBER 0
 #endif  // ZSTD
 
 #if !(defined ZSTD) || !(ZSTD_VERSION_NUMBER >= 500)
