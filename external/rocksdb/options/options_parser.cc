@@ -13,13 +13,14 @@
 #include <utility>
 #include <vector>
 
+#include "file/read_write_util.h"
+#include "file/writable_file_writer.h"
 #include "options/options_helper.h"
 #include "rocksdb/convenience.h"
 #include "rocksdb/db.h"
+#include "test_util/sync_point.h"
 #include "util/cast_util.h"
-#include "util/file_reader_writer.h"
 #include "util/string_util.h"
-#include "util/sync_point.h"
 
 #include "port/port.h"
 
@@ -36,19 +37,20 @@ static const std::string option_file_header =
 Status PersistRocksDBOptions(const DBOptions& db_opt,
                              const std::vector<std::string>& cf_names,
                              const std::vector<ColumnFamilyOptions>& cf_opts,
-                             const std::string& file_name, Env* env) {
+                             const std::string& file_name, FileSystem* fs) {
   TEST_SYNC_POINT("PersistRocksDBOptions:start");
   if (cf_names.size() != cf_opts.size()) {
     return Status::InvalidArgument(
         "cf_names.size() and cf_opts.size() must be the same");
   }
-  std::unique_ptr<WritableFile> wf;
+  std::unique_ptr<FSWritableFile> wf;
 
-  Status s = env->NewWritableFile(file_name, &wf, EnvOptions());
+  Status s =
+      fs->NewWritableFile(file_name, FileOptions(), &wf, nullptr);
   if (!s.ok()) {
     return s;
   }
-  unique_ptr<WritableFileWriter> writable;
+  std::unique_ptr<WritableFileWriter> writable;
   writable.reset(new WritableFileWriter(std::move(wf), file_name, EnvOptions(),
                                         nullptr /* statistics */));
 
@@ -102,7 +104,7 @@ Status PersistRocksDBOptions(const DBOptions& db_opt,
   writable->Close();
 
   return RocksDBOptionsParser::VerifyRocksDBOptionsFromFile(
-      db_opt, cf_names, cf_opts, file_name, env);
+      db_opt, cf_names, cf_opts, file_name, fs);
 }
 
 RocksDBOptionsParser::RocksDBOptionsParser() { Reset(); }
@@ -200,12 +202,13 @@ Status RocksDBOptionsParser::ParseStatement(std::string* name,
   return Status::OK();
 }
 
-Status RocksDBOptionsParser::Parse(const std::string& file_name, Env* env,
+Status RocksDBOptionsParser::Parse(const std::string& file_name, FileSystem* fs,
                                    bool ignore_unknown_options) {
   Reset();
 
-  std::unique_ptr<SequentialFile> seq_file;
-  Status s = env->NewSequentialFile(file_name, &seq_file, EnvOptions());
+  std::unique_ptr<FSSequentialFile> seq_file;
+  Status s = fs->NewSequentialFile(file_name, FileOptions(), &seq_file,
+                                   nullptr);
   if (!s.ok()) {
     return s;
   }
@@ -409,7 +412,7 @@ Status RocksDBOptionsParser::EndSection(
       return s;
     }
   } else if (section == kOptionSectionVersion) {
-    for (const auto pair : opt_map) {
+    for (const auto &pair : opt_map) {
       if (pair.first == "rocksdb_version") {
         s = ParseVersionNumber(pair.first, pair.second, 3, db_version);
         if (!s.ok()) {
@@ -500,6 +503,16 @@ bool AreEqualOptions(
     case OptionType::kInt:
       return (*reinterpret_cast<const int*>(offset1) ==
               *reinterpret_cast<const int*>(offset2));
+    case OptionType::kInt32T:
+      return (*reinterpret_cast<const int32_t*>(offset1) ==
+              *reinterpret_cast<const int32_t*>(offset2));
+    case OptionType::kInt64T:
+      {
+        int64_t v1, v2;
+        GetUnaligned(reinterpret_cast<const int64_t*>(offset1), &v1);
+        GetUnaligned(reinterpret_cast<const int64_t*>(offset2), &v2);
+        return (v1 == v2);
+      }
     case OptionType::kVectorInt:
       return (*reinterpret_cast<const std::vector<int>*>(offset1) ==
               *reinterpret_cast<const std::vector<int>*>(offset2));
@@ -559,6 +572,12 @@ bool AreEqualOptions(
               offset1) ==
           *reinterpret_cast<const BlockBasedTableOptions::DataBlockIndexType*>(
               offset2));
+    case OptionType::kBlockBasedTableIndexShorteningMode:
+      return (
+          *reinterpret_cast<const BlockBasedTableOptions::IndexShorteningMode*>(
+              offset1) ==
+          *reinterpret_cast<const BlockBasedTableOptions::IndexShorteningMode*>(
+              offset2));
     case OptionType::kWALRecoveryMode:
       return (*reinterpret_cast<const WALRecoveryMode*>(offset1) ==
               *reinterpret_cast<const WALRecoveryMode*>(offset2));
@@ -574,7 +593,7 @@ bool AreEqualOptions(
       CompactionOptionsFIFO rhs =
           *reinterpret_cast<const CompactionOptionsFIFO*>(offset2);
       if (lhs.max_table_files_size == rhs.max_table_files_size &&
-          lhs.ttl == rhs.ttl && lhs.allow_compaction == rhs.allow_compaction) {
+          lhs.allow_compaction == rhs.allow_compaction) {
         return true;
       }
       return false;
@@ -635,11 +654,10 @@ bool AreEqualOptions(
 Status RocksDBOptionsParser::VerifyRocksDBOptionsFromFile(
     const DBOptions& db_opt, const std::vector<std::string>& cf_names,
     const std::vector<ColumnFamilyOptions>& cf_opts,
-    const std::string& file_name, Env* env,
+    const std::string& file_name, FileSystem* fs,
     OptionsSanityCheckLevel sanity_check_level, bool ignore_unknown_options) {
   RocksDBOptionsParser parser;
-  std::unique_ptr<SequentialFile> seq_file;
-  Status s = parser.Parse(file_name, env, ignore_unknown_options);
+  Status s = parser.Parse(file_name, fs, ignore_unknown_options);
   if (!s.ok()) {
     return s;
   }

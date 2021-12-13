@@ -10,7 +10,9 @@
 #ifndef ROCKSDB_LITE
 
 #include <limits>
+#include <memory>
 #include <utility>
+
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/status.h"
@@ -41,11 +43,19 @@ using ExpirationRange = std::pair<uint64_t, uint64_t>;
 struct BlobLogHeader {
   static constexpr size_t kSize = 30;
 
+  BlobLogHeader() = default;
+  BlobLogHeader(uint32_t _column_family_id, CompressionType _compression,
+                bool _has_ttl, const ExpirationRange& _expiration_range)
+      : column_family_id(_column_family_id),
+        compression(_compression),
+        has_ttl(_has_ttl),
+        expiration_range(_expiration_range) {}
+
   uint32_t version = kVersion1;
   uint32_t column_family_id = 0;
   CompressionType compression = kNoCompression;
   bool has_ttl = false;
-  ExpirationRange expiration_range = std::make_pair(0, 0);
+  ExpirationRange expiration_range;
 
   void EncodeTo(std::string* dst);
 
@@ -106,8 +116,8 @@ struct BlobLogRecord {
   uint32_t blob_crc = 0;
   Slice key;
   Slice value;
-  std::string key_buf;
-  std::string value_buf;
+  std::unique_ptr<char[]> key_buf;
+  std::unique_ptr<char[]> value_buf;
 
   uint64_t record_size() const { return kHeaderSize + key_size + value_size; }
 

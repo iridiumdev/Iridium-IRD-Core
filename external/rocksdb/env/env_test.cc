@@ -11,13 +11,6 @@
 #include <sys/ioctl.h>
 #endif
 
-#ifdef ROCKSDB_MALLOC_USABLE_SIZE
-#ifdef OS_FREEBSD
-#include <malloc_np.h>
-#else
-#include <malloc.h>
-#endif
-#endif
 #include <sys/types.h>
 
 #include <iostream>
@@ -38,15 +31,16 @@
 #endif
 
 #include "env/env_chroot.h"
+#include "logging/log_buffer.h"
+#include "port/malloc.h"
 #include "port/port.h"
 #include "rocksdb/env.h"
+#include "test_util/sync_point.h"
+#include "test_util/testharness.h"
+#include "test_util/testutil.h"
 #include "util/coding.h"
-#include "util/log_buffer.h"
 #include "util/mutexlock.h"
 #include "util/string_util.h"
-#include "util/sync_point.h"
-#include "util/testharness.h"
-#include "util/testutil.h"
 
 #ifdef OS_LINUX
 static const size_t kPageSize = sysconf(_SC_PAGESIZE);
@@ -118,7 +112,7 @@ class EnvPosixTestWithParam
     }
   }
 
-  ~EnvPosixTestWithParam() { WaitThreadPoolsEmpty(); }
+  ~EnvPosixTestWithParam() override { WaitThreadPoolsEmpty(); }
 };
 
 static void SetBool(void* ptr) {
@@ -181,11 +175,11 @@ TEST_F(EnvPosixTest, DISABLED_FilePermission) {
     std::vector<std::string> fileNames{
         test::PerThreadDBPath(env_, "testfile"),
         test::PerThreadDBPath(env_, "testfile1")};
-    unique_ptr<WritableFile> wfile;
+    std::unique_ptr<WritableFile> wfile;
     ASSERT_OK(env_->NewWritableFile(fileNames[0], &wfile, soptions));
     ASSERT_OK(env_->NewWritableFile(fileNames[1], &wfile, soptions));
     wfile.reset();
-    unique_ptr<RandomRWFile> rwfile;
+    std::unique_ptr<RandomRWFile> rwfile;
     ASSERT_OK(env_->NewRandomRWFile(fileNames[1], &rwfile, soptions));
 
     struct stat sb;
@@ -217,7 +211,7 @@ TEST_F(EnvPosixTest, MemoryMappedFileBuffer) {
   std::string expected_data;
   std::string fname = test::PerThreadDBPath(env_, "testfile");
   {
-    unique_ptr<WritableFile> wfile;
+    std::unique_ptr<WritableFile> wfile;
     const EnvOptions soptions;
     ASSERT_OK(env_->NewWritableFile(fname, &wfile, soptions));
 
@@ -246,6 +240,52 @@ TEST_F(EnvPosixTest, MemoryMappedFileBuffer) {
                           mmap_buffer->GetLen());
   ASSERT_EQ(expected_data, actual_data);
 }
+
+#ifndef ROCKSDB_NO_DYNAMIC_EXTENSION
+TEST_F(EnvPosixTest, LoadRocksDBLibrary) {
+  std::shared_ptr<DynamicLibrary> library;
+  std::function<void*(void*, const char*)> function;
+  Status status = env_->LoadLibrary("no-such-library", "", &library);
+  ASSERT_NOK(status);
+  ASSERT_EQ(nullptr, library.get());
+  status = env_->LoadLibrary("rocksdb", "", &library);
+  if (status.ok()) {  // If we have can find a rocksdb shared library
+    ASSERT_NE(nullptr, library.get());
+    ASSERT_OK(library->LoadFunction("rocksdb_create_default_env",
+                                    &function));  // from C definition
+    ASSERT_NE(nullptr, function);
+    ASSERT_NOK(library->LoadFunction("no-such-method", &function));
+    ASSERT_EQ(nullptr, function);
+    ASSERT_OK(env_->LoadLibrary(library->Name(), "", &library));
+  } else {
+    ASSERT_EQ(nullptr, library.get());
+  }
+}
+#endif  // !ROCKSDB_NO_DYNAMIC_EXTENSION
+
+#if !defined(OS_WIN) && !defined(ROCKSDB_NO_DYNAMIC_EXTENSION)
+TEST_F(EnvPosixTest, LoadRocksDBLibraryWithSearchPath) {
+  std::shared_ptr<DynamicLibrary> library;
+  std::function<void*(void*, const char*)> function;
+  ASSERT_NOK(env_->LoadLibrary("no-such-library", "/tmp", &library));
+  ASSERT_EQ(nullptr, library.get());
+  ASSERT_NOK(env_->LoadLibrary("dl", "/tmp", &library));
+  ASSERT_EQ(nullptr, library.get());
+  Status status = env_->LoadLibrary("rocksdb", "/tmp:./", &library);
+  if (status.ok()) {
+    ASSERT_NE(nullptr, library.get());
+    ASSERT_OK(env_->LoadLibrary(library->Name(), "", &library));
+  }
+  char buff[1024];
+  std::string cwd = getcwd(buff, sizeof(buff));
+
+  status = env_->LoadLibrary("rocksdb", "/tmp:" + cwd, &library);
+  if (status.ok()) {
+    ASSERT_NE(nullptr, library.get());
+    ASSERT_OK(env_->LoadLibrary(library->Name(), "", &library));
+  }
+}
+#endif  // !OS_WIN && !ROCKSDB_NO_DYNAMIC_EXTENSION
 
 TEST_P(EnvPosixTestWithParam, UnSchedule) {
   std::atomic<bool> called(false);
@@ -812,7 +852,7 @@ class IoctlFriendlyTmpdir {
 
 #ifndef ROCKSDB_LITE
 TEST_F(EnvPosixTest, PositionedAppend) {
-  unique_ptr<WritableFile> writable_file;
+  std::unique_ptr<WritableFile> writable_file;
   EnvOptions options;
   options.use_direct_writes = true;
   options.use_mmap_writes = false;
@@ -832,7 +872,7 @@ TEST_F(EnvPosixTest, PositionedAppend) {
   // The file now has 1 sector worth of a followed by a page worth of b
 
   // Verify the above
-  unique_ptr<SequentialFile> seq_file;
+  std::unique_ptr<SequentialFile> seq_file;
   ASSERT_OK(env_->NewSequentialFile(ift.name() + "/f", &seq_file, options));
   char scratch[kPageSize * 2];
   Slice result;
@@ -843,7 +883,9 @@ TEST_F(EnvPosixTest, PositionedAppend) {
 }
 #endif  // !ROCKSDB_LITE
 
-// Only works in linux platforms
+// `GetUniqueId()` temporarily returns zero on Windows. `BlockBasedTable` can
+// handle a return value of zero but this test case cannot.
+#ifndef OS_WIN
 TEST_P(EnvPosixTestWithParam, RandomAccessUniqueID) {
   // Create file.
   if (env_ == Env::Default()) {
@@ -851,10 +893,10 @@ TEST_P(EnvPosixTestWithParam, RandomAccessUniqueID) {
     soptions.use_direct_reads = soptions.use_direct_writes = direct_io_;
     IoctlFriendlyTmpdir ift;
     std::string fname = ift.name() + "/testfile";
-    unique_ptr<WritableFile> wfile;
+    std::unique_ptr<WritableFile> wfile;
     ASSERT_OK(env_->NewWritableFile(fname, &wfile, soptions));
 
-    unique_ptr<RandomAccessFile> file;
+    std::unique_ptr<RandomAccessFile> file;
 
     // Get Unique ID
     ASSERT_OK(env_->NewRandomAccessFile(fname, &file, soptions));
@@ -886,6 +928,7 @@ TEST_P(EnvPosixTestWithParam, RandomAccessUniqueID) {
     env_->DeleteFile(fname);
   }
 }
+#endif  // !defined(OS_WIN)
 
 // only works in linux platforms
 #ifdef ROCKSDB_FALLOCATE_PRESENT
@@ -921,7 +964,7 @@ TEST_P(EnvPosixTestWithParam, AllocateTest) {
     EnvOptions soptions;
     soptions.use_mmap_writes = false;
     soptions.use_direct_reads = soptions.use_direct_writes = direct_io_;
-    unique_ptr<WritableFile> wfile;
+    std::unique_ptr<WritableFile> wfile;
     ASSERT_OK(env_->NewWritableFile(fname, &wfile, soptions));
 
     // allocate 100 MB
@@ -976,7 +1019,9 @@ bool HasPrefix(const std::unordered_set<std::string>& ss) {
   return false;
 }
 
-// Only works in linux and WIN platforms
+// `GetUniqueId()` temporarily returns zero on Windows. `BlockBasedTable` can
+// handle a return value of zero but this test case cannot.
+#ifndef OS_WIN
 TEST_P(EnvPosixTestWithParam, RandomAccessUniqueIDConcurrent) {
   if (env_ == Env::Default()) {
     // Check whether a bunch of concurrently existing files have unique IDs.
@@ -990,14 +1035,14 @@ TEST_P(EnvPosixTestWithParam, RandomAccessUniqueIDConcurrent) {
       fnames.push_back(ift.name() + "/" + "testfile" + ToString(i));
 
       // Create file.
-      unique_ptr<WritableFile> wfile;
+      std::unique_ptr<WritableFile> wfile;
       ASSERT_OK(env_->NewWritableFile(fnames[i], &wfile, soptions));
     }
 
     // Collect and check whether the IDs are unique.
     std::unordered_set<std::string> ids;
     for (const std::string fname : fnames) {
-      unique_ptr<RandomAccessFile> file;
+      std::unique_ptr<RandomAccessFile> file;
       std::string unique_id;
       ASSERT_OK(env_->NewRandomAccessFile(fname, &file, soptions));
       size_t id_size = file->GetUniqueId(temp_id, MAX_ID_SIZE);
@@ -1018,7 +1063,6 @@ TEST_P(EnvPosixTestWithParam, RandomAccessUniqueIDConcurrent) {
   }
 }
 
-// Only works in linux and WIN platforms
 TEST_P(EnvPosixTestWithParam, RandomAccessUniqueIDDeletes) {
   if (env_ == Env::Default()) {
     EnvOptions soptions;
@@ -1033,14 +1077,14 @@ TEST_P(EnvPosixTestWithParam, RandomAccessUniqueIDDeletes) {
     for (int i = 0; i < 1000; ++i) {
       // Create file.
       {
-        unique_ptr<WritableFile> wfile;
+        std::unique_ptr<WritableFile> wfile;
         ASSERT_OK(env_->NewWritableFile(fname, &wfile, soptions));
       }
 
       // Get Unique ID
       std::string unique_id;
       {
-        unique_ptr<RandomAccessFile> file;
+        std::unique_ptr<RandomAccessFile> file;
         ASSERT_OK(env_->NewRandomAccessFile(fname, &file, soptions));
         size_t id_size = file->GetUniqueId(temp_id, MAX_ID_SIZE);
         ASSERT_TRUE(id_size > 0);
@@ -1056,6 +1100,80 @@ TEST_P(EnvPosixTestWithParam, RandomAccessUniqueIDDeletes) {
     }
 
     ASSERT_TRUE(!HasPrefix(ids));
+  }
+}
+#endif  // !defined(OS_WIN)
+
+TEST_P(EnvPosixTestWithParam, MultiRead) {
+  EnvOptions soptions;
+  soptions.use_direct_reads = soptions.use_direct_writes = direct_io_;
+  std::string fname = test::PerThreadDBPath(env_, "testfile");
+
+  const size_t kSectorSize = 4096;
+  const size_t kNumSectors = 8;
+
+  // Create file.
+  {
+    std::unique_ptr<WritableFile> wfile;
+#if !defined(OS_MACOSX) && !defined(OS_WIN) && !defined(OS_SOLARIS) && \
+    !defined(OS_AIX)
+    if (soptions.use_direct_writes) {
+      soptions.use_direct_writes = false;
+    }
+#endif
+    ASSERT_OK(env_->NewWritableFile(fname, &wfile, soptions));
+    for (size_t i = 0; i < kNumSectors; ++i) {
+      auto data = NewAligned(kSectorSize * 8, static_cast<char>(i + 1));
+      Slice slice(data.get(), kSectorSize);
+      ASSERT_OK(wfile->Append(slice));
+    }
+    ASSERT_OK(wfile->Close());
+  }
+
+  // More attempts to simulate more partial result sequences.
+  for (uint32_t attempt = 0; attempt < 20; attempt++) {
+    // Random Read
+    Random rnd(301 + attempt);
+    rocksdb::SyncPoint::GetInstance()->SetCallBack(
+        "PosixRandomAccessFile::MultiRead:io_uring_result", [&](void* arg) {
+          if (attempt > 0) {
+            // No failure in the first attempt.
+            size_t& bytes_read = *static_cast<size_t*>(arg);
+            if (rnd.OneIn(4)) {
+              bytes_read = 0;
+            } else if (rnd.OneIn(3)) {
+              bytes_read = static_cast<size_t>(
+                  rnd.Uniform(static_cast<int>(bytes_read)));
+            }
+          }
+        });
+    rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+
+    std::unique_ptr<RandomAccessFile> file;
+    std::vector<ReadRequest> reqs(3);
+    std::vector<std::unique_ptr<char, Deleter>> data;
+    uint64_t offset = 0;
+    for (size_t i = 0; i < reqs.size(); ++i) {
+      reqs[i].offset = offset;
+      offset += 2 * kSectorSize;
+      reqs[i].len = kSectorSize;
+      data.emplace_back(NewAligned(kSectorSize, 0));
+      reqs[i].scratch = data.back().get();
+    }
+#if !defined(OS_MACOSX) && !defined(OS_WIN) && !defined(OS_SOLARIS) && \
+    !defined(OS_AIX)
+    if (soptions.use_direct_reads) {
+      soptions.use_direct_reads = false;
+    }
+#endif
+    ASSERT_OK(env_->NewRandomAccessFile(fname, &file, soptions));
+    ASSERT_OK(file->MultiRead(reqs.data(), reqs.size()));
+    for (size_t i = 0; i < reqs.size(); ++i) {
+      auto buf = NewAligned(kSectorSize * 8, static_cast<char>(i * 2 + 1));
+      ASSERT_OK(reqs[i].status);
+      ASSERT_EQ(memcmp(reqs[i].scratch, buf.get(), kSectorSize), 0);
+    }
+    rocksdb::SyncPoint::GetInstance()->DisableProcessing();
   }
 }
 
@@ -1076,7 +1194,7 @@ TEST_P(EnvPosixTestWithParam, InvalidateCache) {
 
     // Create file.
     {
-      unique_ptr<WritableFile> wfile;
+      std::unique_ptr<WritableFile> wfile;
 #if !defined(OS_MACOSX) && !defined(OS_WIN) && !defined(OS_SOLARIS) && !defined(OS_AIX)
       if (soptions.use_direct_writes) {
         soptions.use_direct_writes = false;
@@ -1086,11 +1204,11 @@ TEST_P(EnvPosixTestWithParam, InvalidateCache) {
       ASSERT_OK(wfile->Append(slice));
       ASSERT_OK(wfile->InvalidateCache(0, 0));
       ASSERT_OK(wfile->Close());
-    }
+  }
 
     // Random Read
     {
-      unique_ptr<RandomAccessFile> file;
+      std::unique_ptr<RandomAccessFile> file;
       auto scratch = NewAligned(kSectorSize, 0);
       Slice result;
 #if !defined(OS_MACOSX) && !defined(OS_WIN) && !defined(OS_SOLARIS) && !defined(OS_AIX)
@@ -1107,7 +1225,7 @@ TEST_P(EnvPosixTestWithParam, InvalidateCache) {
 
     // Sequential Read
     {
-      unique_ptr<SequentialFile> file;
+      std::unique_ptr<SequentialFile> file;
       auto scratch = NewAligned(kSectorSize, 0);
       Slice result;
 #if !defined(OS_MACOSX) && !defined(OS_WIN) && !defined(OS_SOLARIS) && !defined(OS_AIX)
@@ -1135,7 +1253,7 @@ TEST_P(EnvPosixTestWithParam, InvalidateCache) {
 class TestLogger : public Logger {
  public:
   using Logger::Logv;
-  virtual void Logv(const char* format, va_list ap) override {
+  void Logv(const char* format, va_list ap) override {
     log_count++;
 
     char new_format[550];
@@ -1217,7 +1335,7 @@ class TestLogger2 : public Logger {
  public:
   explicit TestLogger2(size_t max_log_size) : max_log_size_(max_log_size) {}
   using Logger::Logv;
-  virtual void Logv(const char* format, va_list ap) override {
+  void Logv(const char* format, va_list ap) override {
     char new_format[2000];
     std::fill_n(new_format, sizeof(new_format), '2');
     {
@@ -1252,7 +1370,7 @@ TEST_P(EnvPosixTestWithParam, LogBufferMaxSizeTest) {
 TEST_P(EnvPosixTestWithParam, Preallocation) {
   rocksdb::SyncPoint::GetInstance()->EnableProcessing();
   const std::string src = test::PerThreadDBPath(env_, "testfile");
-  unique_ptr<WritableFile> srcfile;
+  std::unique_ptr<WritableFile> srcfile;
   EnvOptions soptions;
   soptions.use_direct_reads = soptions.use_direct_writes = direct_io_;
 #if !defined(OS_MACOSX) && !defined(OS_WIN) && !defined(OS_SOLARIS) && !defined(OS_AIX) && !defined(OS_OPENBSD) && !defined(OS_FREEBSD)
@@ -1315,7 +1433,7 @@ TEST_P(EnvPosixTestWithParam, ConsistentChildrenAttributes) {
     for (int i = 0; i < kNumChildren; ++i) {
       const std::string path =
           test::TmpDir(env_) + "/" + "testfile_" + std::to_string(i);
-      unique_ptr<WritableFile> file;
+      std::unique_ptr<WritableFile> file;
 #if !defined(OS_MACOSX) && !defined(OS_WIN) && !defined(OS_SOLARIS) && !defined(OS_AIX) && !defined(OS_OPENBSD) && !defined(OS_FREEBSD)
       if (soptions.use_direct_writes) {
         rocksdb::SyncPoint::GetInstance()->SetCallBack(
@@ -1330,7 +1448,7 @@ TEST_P(EnvPosixTestWithParam, ConsistentChildrenAttributes) {
       Slice buf(buf_ptr.get(), data.size());
       file->Append(buf);
       data.append(std::string(4096, 'T'));
-    }
+  }
 
     std::vector<Env::FileAttributes> file_attrs;
     ASSERT_OK(env_->GetChildrenFileAttributes(test::TmpDir(env_), &file_attrs));
@@ -1368,50 +1486,110 @@ TEST_P(EnvPosixTestWithParam, WritableFileWrapper) {
       inc(1);
       return Status::OK();
     }
-    Status Truncate(uint64_t /*size*/) override { return Status::OK(); }
-    Status Close() override { inc(2); return Status::OK(); }
-    Status Flush() override { inc(3); return Status::OK(); }
-    Status Sync() override { inc(4); return Status::OK(); }
-    Status Fsync() override { inc(5); return Status::OK(); }
-    void SetIOPriority(Env::IOPriority /*pri*/) override { inc(6); }
-    uint64_t GetFileSize() override { inc(7); return 0; }
-    void GetPreallocationStatus(size_t* /*block_size*/,
-                                size_t* /*last_allocated_block*/) override {
-      inc(8);
-    }
-    size_t GetUniqueId(char* /*id*/, size_t /*max_size*/) const override {
-      inc(9);
-      return 0;
-    }
-    Status InvalidateCache(size_t /*offset*/, size_t /*length*/) override {
-      inc(10);
+
+    Status PositionedAppend(const Slice& /*data*/,
+                            uint64_t /*offset*/) override {
+      inc(2);
       return Status::OK();
     }
 
-   protected:
-    Status Allocate(uint64_t /*offset*/, uint64_t /*len*/) override {
-      inc(11);
+    Status Truncate(uint64_t /*size*/) override {
+      inc(3);
       return Status::OK();
     }
-    Status RangeSync(uint64_t /*offset*/, uint64_t /*nbytes*/) override {
+
+    Status Close() override {
+      inc(4);
+      return Status::OK();
+    }
+
+    Status Flush() override {
+      inc(5);
+      return Status::OK();
+    }
+
+    Status Sync() override {
+      inc(6);
+      return Status::OK();
+    }
+
+    Status Fsync() override {
+      inc(7);
+      return Status::OK();
+    }
+
+    bool IsSyncThreadSafe() const override {
+      inc(8);
+      return true;
+    }
+
+    bool use_direct_io() const override {
+      inc(9);
+      return true;
+    }
+
+    size_t GetRequiredBufferAlignment() const override {
+      inc(10);
+      return 0;
+    }
+
+    void SetIOPriority(Env::IOPriority /*pri*/) override { inc(11); }
+
+    Env::IOPriority GetIOPriority() override {
       inc(12);
+      return Env::IOPriority::IO_LOW;
+    }
+
+    void SetWriteLifeTimeHint(Env::WriteLifeTimeHint /*hint*/) override {
+      inc(13);
+    }
+
+    Env::WriteLifeTimeHint GetWriteLifeTimeHint() override {
+      inc(14);
+      return Env::WriteLifeTimeHint::WLTH_NOT_SET;
+    }
+
+    uint64_t GetFileSize() override {
+      inc(15);
+      return 0;
+    }
+
+    void SetPreallocationBlockSize(size_t /*size*/) override { inc(16); }
+
+    void GetPreallocationStatus(size_t* /*block_size*/,
+                                size_t* /*last_allocated_block*/) override {
+      inc(17);
+    }
+
+    size_t GetUniqueId(char* /*id*/, size_t /*max_size*/) const override {
+      inc(18);
+      return 0;
+    }
+
+    Status InvalidateCache(size_t /*offset*/, size_t /*length*/) override {
+      inc(19);
+      return Status::OK();
+    }
+
+    Status RangeSync(uint64_t /*offset*/, uint64_t /*nbytes*/) override {
+      inc(20);
+      return Status::OK();
+    }
+
+    void PrepareWrite(size_t /*offset*/, size_t /*len*/) override { inc(21); }
+
+    Status Allocate(uint64_t /*offset*/, uint64_t /*len*/) override {
+      inc(22);
       return Status::OK();
     }
 
    public:
-    ~Base() {
-      inc(13);
-    }
+    ~Base() override { inc(23); }
   };
 
   class Wrapper : public WritableFileWrapper {
    public:
     explicit Wrapper(WritableFile* target) : WritableFileWrapper(target) {}
-
-    void CallProtectedMethods() {
-      Allocate(0, 0);
-      RangeSync(0, 0);
-    }
   };
 
   int step = 0;
@@ -1420,19 +1598,30 @@ TEST_P(EnvPosixTestWithParam, WritableFileWrapper) {
     Base b(&step);
     Wrapper w(&b);
     w.Append(Slice());
+    w.PositionedAppend(Slice(), 0);
+    w.Truncate(0);
     w.Close();
     w.Flush();
     w.Sync();
     w.Fsync();
+    w.IsSyncThreadSafe();
+    w.use_direct_io();
+    w.GetRequiredBufferAlignment();
     w.SetIOPriority(Env::IOPriority::IO_HIGH);
+    w.GetIOPriority();
+    w.SetWriteLifeTimeHint(Env::WriteLifeTimeHint::WLTH_NOT_SET);
+    w.GetWriteLifeTimeHint();
     w.GetFileSize();
+    w.SetPreallocationBlockSize(0);
     w.GetPreallocationStatus(nullptr, nullptr);
     w.GetUniqueId(nullptr, 0);
     w.InvalidateCache(0, 0);
-    w.CallProtectedMethods();
+    w.RangeSync(0, 0);
+    w.PrepareWrite(0, 0);
+    w.Allocate(0, 0);
   }
 
-  EXPECT_EQ(14, step);
+  EXPECT_EQ(24, step);
 }
 
 TEST_P(EnvPosixTestWithParam, PosixRandomRWFile) {
@@ -1567,7 +1756,7 @@ TEST_P(EnvPosixTestWithParam, PosixRandomRWFileRandomized) {
   const std::string path = test::PerThreadDBPath(env_, "random_rw_file_rand");
   env_->DeleteFile(path);
 
-  unique_ptr<RandomRWFile> file;
+  std::unique_ptr<RandomRWFile> file;
 
 #ifdef OS_LINUX
   // Cannot open non-existing file.
@@ -1618,15 +1807,15 @@ class TestEnv : public EnvWrapper {
    public:
     using Logger::Logv;
     TestLogger(TestEnv* env_ptr) : Logger() { env = env_ptr; }
-    ~TestLogger() {
+    ~TestLogger() override {
       if (!closed_) {
         CloseHelper();
       }
     }
-    virtual void Logv(const char* /*format*/, va_list /*ap*/) override{};
+    void Logv(const char* /*format*/, va_list /*ap*/) override{};
 
    protected:
-    virtual Status CloseImpl() override { return CloseHelper(); }
+    Status CloseImpl() override { return CloseHelper(); }
 
    private:
     Status CloseHelper() {
@@ -1640,8 +1829,8 @@ class TestEnv : public EnvWrapper {
 
   int GetCloseCount() { return close_count; }
 
-  virtual Status NewLogger(const std::string& /*fname*/,
-                           shared_ptr<Logger>* result) {
+  Status NewLogger(const std::string& /*fname*/,
+                   std::shared_ptr<Logger>* result) override {
     result->reset(new TestLogger(this));
     return Status::OK();
   }
@@ -1685,8 +1874,8 @@ INSTANTIATE_TEST_CASE_P(DefaultEnvWithDirectIO, EnvPosixTestWithParam,
 #endif  // !defined(ROCKSDB_LITE)
 
 #if !defined(ROCKSDB_LITE) && !defined(OS_WIN)
-static unique_ptr<Env> chroot_env(NewChrootEnv(Env::Default(),
-                                               test::TmpDir(Env::Default())));
+static std::unique_ptr<Env> chroot_env(
+    NewChrootEnv(Env::Default(), test::TmpDir(Env::Default())));
 INSTANTIATE_TEST_CASE_P(
     ChrootEnvWithoutDirectIO, EnvPosixTestWithParam,
     ::testing::Values(std::pair<Env*, bool>(chroot_env.get(), false)));

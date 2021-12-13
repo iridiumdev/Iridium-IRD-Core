@@ -8,6 +8,7 @@ package org.rocksdb;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.rocksdb.test.RemoveEmptyValueCompactionFilterFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,25 +55,14 @@ public class CompactionFilterFactoryTest {
           rocksDb.compactRange(cfHandles.get(1));
 
           assertThat(rocksDb.get(cfHandles.get(1), key1)).isEqualTo(value1);
-          assertThat(rocksDb.keyMayExist(cfHandles.get(1), key2, new StringBuilder())).isFalse();
+          final boolean exists = rocksDb.keyMayExist(cfHandles.get(1), key2, null);
+          assertThat(exists).isFalse();
         } finally {
           for (final ColumnFamilyHandle cfHandle : cfHandles) {
             cfHandle.close();
           }
         }
       }
-    }
-  }
-
-  private static class RemoveEmptyValueCompactionFilterFactory extends AbstractCompactionFilterFactory<RemoveEmptyValueCompactionFilter> {
-    @Override
-    public RemoveEmptyValueCompactionFilter createCompactionFilter(final AbstractCompactionFilter.Context context) {
-      return new RemoveEmptyValueCompactionFilter();
-    }
-
-    @Override
-    public String name() {
-      return "RemoveEmptyValueCompactionFilterFactory";
     }
   }
 }

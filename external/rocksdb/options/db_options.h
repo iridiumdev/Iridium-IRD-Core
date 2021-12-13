@@ -23,6 +23,7 @@ struct ImmutableDBOptions {
   bool error_if_exists;
   bool paranoid_checks;
   Env* env;
+  std::shared_ptr<FileSystem> fs;
   std::shared_ptr<RateLimiter> rate_limiter;
   std::shared_ptr<SstFileManager> sst_file_manager;
   std::shared_ptr<Logger> info_log;
@@ -43,6 +44,7 @@ struct ImmutableDBOptions {
   int table_cache_numshardbits;
   uint64_t wal_ttl_seconds;
   uint64_t wal_size_limit_mb;
+  uint64_t max_write_batch_group_size_bytes;
   size_t manifest_preallocation_size;
   bool allow_mmap_reads;
   bool allow_mmap_writes;
@@ -60,6 +62,7 @@ struct ImmutableDBOptions {
   std::vector<std::shared_ptr<EventListener>> listeners;
   bool enable_thread_tracking;
   bool enable_pipelined_write;
+  bool unordered_write;
   bool allow_concurrent_memtable_write;
   bool enable_write_thread_adaptive_yield;
   uint64_t write_thread_max_yield_usec;
@@ -78,6 +81,11 @@ struct ImmutableDBOptions {
   bool preserve_deletes;
   bool two_write_queues;
   bool manual_wal_flush;
+  bool atomic_flush;
+  bool avoid_unnecessary_blocking_io;
+  bool persist_stats_to_disk;
+  bool write_dbid_to_manifest;
+  size_t log_readahead_size;
 };
 
 struct MutableDBOptions {
@@ -96,9 +104,12 @@ struct MutableDBOptions {
   uint64_t max_total_wal_size;
   uint64_t delete_obsolete_files_period_micros;
   unsigned int stats_dump_period_sec;
+  unsigned int stats_persist_period_sec;
+  size_t stats_history_buffer_size;
   int max_open_files;
   uint64_t bytes_per_sync;
   uint64_t wal_bytes_per_sync;
+  bool strict_bytes_per_sync;
   size_t compaction_readahead_size;
 };
 

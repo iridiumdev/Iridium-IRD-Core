@@ -16,8 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class DBOptionsTest {
 
   @ClassRule
-  public static final RocksMemoryResource rocksMemoryResource =
-      new RocksMemoryResource();
+  public static final RocksNativeLibraryResource ROCKS_NATIVE_LIBRARY_RESOURCE =
+      new RocksNativeLibraryResource();
 
   public static final Random rand = PlatformRandomHelper.
       getPlatformSpecificRandomFactory();
@@ -27,7 +27,7 @@ public class DBOptionsTest {
     DBOptions origOpts = new DBOptions();
     origOpts.setCreateIfMissing(rand.nextBoolean());
     origOpts.setAllow2pc(rand.nextBoolean());
-    origOpts.setBaseBackgroundCompactions(rand.nextInt(10));
+    origOpts.setMaxBackgroundJobs(rand.nextInt(10));
     DBOptions copyOpts = new DBOptions(origOpts);
     assertThat(origOpts.createIfMissing()).isEqualTo(copyOpts.createIfMissing());
     assertThat(origOpts.allow2pc()).isEqualTo(copyOpts.allow2pc());
@@ -215,6 +215,7 @@ public class DBOptionsTest {
     }
   }
 
+  @SuppressWarnings("deprecated")
   @Test
   public void baseBackgroundCompactions() {
     try (final DBOptions opt = new DBOptions()) {
@@ -225,6 +226,7 @@ public class DBOptionsTest {
     }
   }
 
+  @SuppressWarnings("deprecated")
   @Test
   public void maxBackgroundCompactions() {
     try(final DBOptions opt = new DBOptions()) {
@@ -244,6 +246,7 @@ public class DBOptionsTest {
     }
   }
 
+  @SuppressWarnings("deprecated")
   @Test
   public void maxBackgroundFlushes() {
     try(final DBOptions opt = new DBOptions()) {
@@ -407,6 +410,24 @@ public class DBOptionsTest {
   }
 
   @Test
+  public void statsPersistPeriodSec() {
+    try (final DBOptions opt = new DBOptions()) {
+      final int intValue = rand.nextInt();
+      opt.setStatsPersistPeriodSec(intValue);
+      assertThat(opt.statsPersistPeriodSec()).isEqualTo(intValue);
+    }
+  }
+
+  @Test
+  public void statsHistoryBufferSize() {
+    try (final DBOptions opt = new DBOptions()) {
+      final long longValue = rand.nextLong();
+      opt.setStatsHistoryBufferSize(longValue);
+      assertThat(opt.statsHistoryBufferSize()).isEqualTo(longValue);
+    }
+  }
+
+  @Test
   public void adviseRandomOnOpen() {
     try(final DBOptions opt = new DBOptions()) {
       final boolean boolValue = rand.nextBoolean();
@@ -421,6 +442,26 @@ public class DBOptionsTest {
       final long longValue = rand.nextLong();
       opt.setDbWriteBufferSize(longValue);
       assertThat(opt.dbWriteBufferSize()).isEqualTo(longValue);
+    }
+  }
+
+  @Test
+  public void setWriteBufferManager() throws RocksDBException {
+    try (final DBOptions opt = new DBOptions();
+         final Cache cache = new LRUCache(1 * 1024 * 1024);
+         final WriteBufferManager writeBufferManager = new WriteBufferManager(2000l, cache)) {
+      opt.setWriteBufferManager(writeBufferManager);
+      assertThat(opt.writeBufferManager()).isEqualTo(writeBufferManager);
+    }
+  }
+
+  @Test
+  public void setWriteBufferManagerWithZeroBufferSize() throws RocksDBException {
+    try (final DBOptions opt = new DBOptions();
+         final Cache cache = new LRUCache(1 * 1024 * 1024);
+         final WriteBufferManager writeBufferManager = new WriteBufferManager(0l, cache)) {
+      opt.setWriteBufferManager(writeBufferManager);
+      assertThat(opt.writeBufferManager()).isEqualTo(writeBufferManager);
     }
   }
 
@@ -497,6 +538,15 @@ public class DBOptionsTest {
   }
 
   @Test
+  public void strictBytesPerSync() {
+    try (final DBOptions opt = new DBOptions()) {
+      assertThat(opt.strictBytesPerSync()).isFalse();
+      opt.setStrictBytesPerSync(true);
+      assertThat(opt.strictBytesPerSync()).isTrue();
+    }
+  }
+
+  @Test
   public void enableThreadTracking() {
     try (final DBOptions opt = new DBOptions()) {
       final boolean boolValue = rand.nextBoolean();
@@ -511,6 +561,24 @@ public class DBOptionsTest {
       final long longValue = rand.nextLong();
       opt.setDelayedWriteRate(longValue);
       assertThat(opt.delayedWriteRate()).isEqualTo(longValue);
+    }
+  }
+
+  @Test
+  public void enablePipelinedWrite() {
+    try(final DBOptions opt = new DBOptions()) {
+      assertThat(opt.enablePipelinedWrite()).isFalse();
+      opt.setEnablePipelinedWrite(true);
+      assertThat(opt.enablePipelinedWrite()).isTrue();
+    }
+  }
+
+  @Test
+  public void unordredWrite() {
+    try(final DBOptions opt = new DBOptions()) {
+      assertThat(opt.unorderedWrite()).isFalse();
+      opt.setUnorderedWrite(true);
+      assertThat(opt.unorderedWrite()).isTrue();
     }
   }
 
@@ -596,6 +664,38 @@ public class DBOptionsTest {
   }
 
   @Test
+  public void walFilter() {
+    try (final DBOptions opt = new DBOptions()) {
+      assertThat(opt.walFilter()).isNull();
+
+      try (final AbstractWalFilter walFilter = new AbstractWalFilter() {
+        @Override
+        public void columnFamilyLogNumberMap(
+            final Map<Integer, Long> cfLognumber,
+            final Map<String, Integer> cfNameId) {
+          // no-op
+        }
+
+        @Override
+        public LogRecordFoundResult logRecordFound(final long logNumber,
+            final String logFileName, final WriteBatch batch,
+            final WriteBatch newBatch) {
+          return new LogRecordFoundResult(
+              WalProcessingOption.CONTINUE_PROCESSING, false);
+        }
+
+        @Override
+        public String name() {
+          return "test-wal-filter";
+        }
+      }) {
+        opt.setWalFilter(walFilter);
+        assertThat(opt.walFilter()).isEqualTo(walFilter);
+      }
+    }
+  }
+
+  @Test
   public void failIfOptionsFileError() {
     try (final DBOptions opt = new DBOptions()) {
       final boolean boolValue = rand.nextBoolean();
@@ -628,6 +728,51 @@ public class DBOptionsTest {
       final boolean boolValue = rand.nextBoolean();
       opt.setAvoidFlushDuringShutdown(boolValue);
       assertThat(opt.avoidFlushDuringShutdown()).isEqualTo(boolValue);
+    }
+  }
+
+  @Test
+  public void allowIngestBehind() {
+    try (final DBOptions opt = new DBOptions()) {
+      assertThat(opt.allowIngestBehind()).isFalse();
+      opt.setAllowIngestBehind(true);
+      assertThat(opt.allowIngestBehind()).isTrue();
+    }
+  }
+
+  @Test
+  public void preserveDeletes() {
+    try (final DBOptions opt = new DBOptions()) {
+      assertThat(opt.preserveDeletes()).isFalse();
+      opt.setPreserveDeletes(true);
+      assertThat(opt.preserveDeletes()).isTrue();
+    }
+  }
+
+  @Test
+  public void twoWriteQueues() {
+    try (final DBOptions opt = new DBOptions()) {
+      assertThat(opt.twoWriteQueues()).isFalse();
+      opt.setTwoWriteQueues(true);
+      assertThat(opt.twoWriteQueues()).isTrue();
+    }
+  }
+
+  @Test
+  public void manualWalFlush() {
+    try (final DBOptions opt = new DBOptions()) {
+      assertThat(opt.manualWalFlush()).isFalse();
+      opt.setManualWalFlush(true);
+      assertThat(opt.manualWalFlush()).isTrue();
+    }
+  }
+
+  @Test
+  public void atomicFlush() {
+    try (final DBOptions opt = new DBOptions()) {
+      assertThat(opt.atomicFlush()).isFalse();
+      opt.setAtomicFlush(true);
+      assertThat(opt.atomicFlush()).isTrue();
     }
   }
 

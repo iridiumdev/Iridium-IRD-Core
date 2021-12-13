@@ -10,9 +10,9 @@
 #include "port/win/io_win.h"
 
 #include "monitoring/iostats_context_imp.h"
+#include "test_util/sync_point.h"
 #include "util/aligned_buffer.h"
 #include "util/coding.h"
-#include "util/sync_point.h"
 
 namespace rocksdb {
 namespace port {
@@ -175,60 +175,18 @@ Status ftruncate(const std::string& filename, HANDLE hFile,
   return status;
 }
 
-size_t GetUniqueIdFromFile(HANDLE hFile, char* id, size_t max_size) {
-
-  if (max_size < kMaxVarint64Length * 3) {
-    return 0;
-  }
-#if (_WIN32_WINNT == _WIN32_WINNT_VISTA)
-  // MINGGW as defined by CMake file.
-  // yuslepukhin: I hate the guts of the above macros.
-  // This impl does not guarantee uniqueness everywhere
-  // is reasonably good
-  BY_HANDLE_FILE_INFORMATION FileInfo;
-
-  BOOL result = GetFileInformationByHandle(hFile, &FileInfo);
-
-  TEST_SYNC_POINT_CALLBACK("GetUniqueIdFromFile:FS_IOC_GETVERSION", &result);
-
-  if (!result) {
-    return 0;
-  }
-
-  char* rid = id;
-  rid = EncodeVarint64(rid, uint64_t(FileInfo.dwVolumeSerialNumber));
-  rid = EncodeVarint64(rid, uint64_t(FileInfo.nFileIndexHigh));
-  rid = EncodeVarint64(rid, uint64_t(FileInfo.nFileIndexLow));
-
-  assert(rid >= id);
-  return static_cast<size_t>(rid - id);
-#else
-  FILE_ID_INFO FileInfo;
-  BOOL result = GetFileInformationByHandleEx(hFile, FileIdInfo, &FileInfo,
-    sizeof(FileInfo));
-
-  TEST_SYNC_POINT_CALLBACK("GetUniqueIdFromFile:FS_IOC_GETVERSION", &result);
-
-  if (!result) {
-    return 0;
-  }
-
-  static_assert(sizeof(uint64_t) == sizeof(FileInfo.VolumeSerialNumber),
-    "Wrong sizeof expectations");
-  // FileId.Identifier is an array of 16 BYTEs, we encode them as two uint64_t
-  static_assert(sizeof(uint64_t) * 2 == sizeof(FileInfo.FileId.Identifier),
-    "Wrong sizeof expectations");
-
-  char* rid = id;
-  rid = EncodeVarint64(rid, uint64_t(FileInfo.VolumeSerialNumber));
-  uint64_t* file_id = reinterpret_cast<uint64_t*>(&FileInfo.FileId.Identifier[0]);
-  rid = EncodeVarint64(rid, *file_id);
-  ++file_id;
-  rid = EncodeVarint64(rid, *file_id);
-
-  assert(rid >= id);
-  return static_cast<size_t>(rid - id);
-#endif
+size_t GetUniqueIdFromFile(HANDLE /*hFile*/, char* /*id*/,
+                           size_t /*max_size*/) {
+  // Returning 0 is safe as it causes the table reader to generate a unique ID.
+  // This is suboptimal for performance as it prevents multiple table readers
+  // for the same file from sharing cached blocks. For example, if users have
+  // a low value for `max_open_files`, there can be many table readers opened
+  // for the same file.
+  //
+  // TODO: this is a temporarily solution as it is safe but not optimal for
+  // performance. For more details see discussion in
+  // https://github.com/facebook/rocksdb/pull/5844.
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -383,21 +341,23 @@ Status WinMmapFile::PreallocateInternal(uint64_t spaceToReserve) {
   return fallocate(filename_, hFile_, spaceToReserve);
 }
 
-WinMmapFile::WinMmapFile(const std::string& fname, HANDLE hFile, size_t page_size,
-  size_t allocation_granularity, const EnvOptions& options)
-  : WinFileData(fname, hFile, false),
-  hMap_(NULL),
-  page_size_(page_size),
-  allocation_granularity_(allocation_granularity),
-  reserved_size_(0),
-  mapping_size_(0),
-  view_size_(0),
-  mapped_begin_(nullptr),
-  mapped_end_(nullptr),
-  dst_(nullptr),
-  last_sync_(nullptr),
-  file_offset_(0),
-  pending_sync_(false) {
+WinMmapFile::WinMmapFile(const std::string& fname, HANDLE hFile,
+                         size_t page_size, size_t allocation_granularity,
+                         const EnvOptions& options)
+    : WinFileData(fname, hFile, false),
+      WritableFile(options),
+      hMap_(NULL),
+      page_size_(page_size),
+      allocation_granularity_(allocation_granularity),
+      reserved_size_(0),
+      mapping_size_(0),
+      view_size_(0),
+      mapped_begin_(nullptr),
+      mapped_end_(nullptr),
+      dst_(nullptr),
+      last_sync_(nullptr),
+      file_offset_(0),
+      pending_sync_(false) {
   // Allocation granularity must be obtained from GetSystemInfo() and must be
   // a power of two.
   assert(allocation_granularity > 0);
@@ -966,7 +926,8 @@ WinWritableFile::WinWritableFile(const std::string& fname, HANDLE hFile,
                                  size_t alignment, size_t /* capacity */,
                                  const EnvOptions& options)
     : WinFileData(fname, hFile, options.use_direct_writes),
-      WinWritableImpl(this, alignment) {
+      WinWritableImpl(this, alignment),
+      WritableFile(options) {
   assert(!options.use_mmap_writes);
 }
 
@@ -1064,7 +1025,12 @@ Status WinRandomRWFile::Close() {
 //////////////////////////////////////////////////////////////////////////
 /// WinMemoryMappedBufer
 WinMemoryMappedBuffer::~WinMemoryMappedBuffer() {
-  BOOL ret = FALSE;
+  BOOL ret
+#if defined(_MSC_VER)
+    = FALSE;
+#else
+    __attribute__((__unused__));
+#endif
   if (base_ != nullptr) {
     ret = ::UnmapViewOfFile(base_);
     assert(ret);
